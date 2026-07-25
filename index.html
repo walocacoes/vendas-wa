@@ -304,14 +304,14 @@
   function ordenarDesc(arr){return arr.sort((a,b)=>{const da=String(a.dataFechamento||a.dataRegistro||""),dbb=String(b.dataFechamento||b.dataRegistro||"");if(da!==dbb)return dbb.localeCompare(da);const ta=a.criadoEm&&a.criadoEm.seconds?a.criadoEm.seconds:0,tb=b.criadoEm&&b.criadoEm.seconds?b.criadoEm.seconds:0;return tb-ta;});}
   async function carregarLista(){
     const box=$("listaBox");
-    if(!jaCarregou){
-      box.innerHTML='<div class="empty">Carregando…</div>';
-      try{todosPedidos=[];(await getDocs(PEDIDOS)).forEach(d=>todosPedidos.push({id:d.id,...d.data()}));todosPedidos=ordenarDesc(todosPedidos);jaCarregou=true;
-        // popula meses presentes
-        const meses=[...new Set(todosPedidos.map(p=>p.mes).filter(Boolean))].sort((a,b)=>MESES.indexOf(a)-MESES.indexOf(b));
-        $("fMes").innerHTML='<option value="">Todos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join("");
-      }catch(e){box.innerHTML='<div class="empty">Não foi possível carregar.</div>';console.error(e);return;}
-    }
+    box.innerHTML='<div class="empty">Carregando…</div>';
+    try{todosPedidos=[];(await getDocs(PEDIDOS)).forEach(d=>todosPedidos.push({id:d.id,...d.data()}));todosPedidos=ordenarDesc(todosPedidos);jaCarregou=true;
+      // popula meses presentes (mantém o mês selecionado)
+      const mesSel=$("fMes").value;
+      const meses=[...new Set(todosPedidos.map(p=>p.mes).filter(Boolean))].sort((a,b)=>MESES.indexOf(a)-MESES.indexOf(b));
+      $("fMes").innerHTML='<option value="">Todos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join("");
+      $("fMes").value=mesSel;
+    }catch(e){box.innerHTML='<div class="empty">Não foi possível carregar.</div>';console.error(e);return;}
     renderLista();
   }
   function filtrar(){
