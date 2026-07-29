@@ -122,6 +122,7 @@
       <div class="tabs">
         <button class="tab active" data-view="novo">Novo pedido</button>
         <button class="tab" data-view="lista">Pedidos lançados</button>
+        <button class="tab" data-view="devolvidos" id="tabDevolvidos" style="display:none">Devolvidos<span class="count" id="devCount" style="display:none">0</span></button>
         <button class="tab" data-view="revisao" id="tabRevisao" style="display:none">Revisão<span class="count" id="revCount" style="display:none">0</span></button>
         <button class="tab" data-view="equipe" id="tabEquipe" style="display:none">Equipe</button>
         <button class="tab" data-view="dashboard" id="tabDashboard" style="display:none">Painéis</button>
@@ -183,6 +184,12 @@
         <h2>Painéis</h2><p class="hint">Contam apenas pedidos <b>confirmados</b>. Sobem conforme você aprova os pendentes.</p>
         <div id="dashBox"><div class="empty">Carregando…</div></div>
       </div></section>
+
+      <!-- DEVOLVIDOS (vendedor) -->
+      <section id="view-devolvidos" style="display:none"><div class="card">
+        <h2>Pedidos devolvidos</h2><p class="hint">Pedidos que a gestão devolveu para você corrigir. Ajuste o que foi pedido e reenvie para conferência.</p>
+        <div id="devBox"><div class="empty">Carregando…</div></div>
+      </div></section>
     </div>
   </div>
 
@@ -191,6 +198,7 @@
     <h3 id="mTitulo">Revisar pedido</h3><p class="sub" id="mSub"></p>
     <div class="grid">
       <div class="lockbar" id="lockbar"><span>🔒</span><span>Pedido confirmado. Para editar, destrave.</span><button class="btn-sm" id="mDestravar" style="margin-left:auto">Destravar edição</button></div>
+      <div class="lockbar" id="motivoBanner" style="display:none;background:var(--warn-soft);border-color:#EAD9AE;color:var(--warn)"><span>↩️</span><span id="motivoBannerText"></span></div>
       <div class="field"><label>Nº do pedido</label><input id="m_numero"></div>
       <div class="field"><label>Cliente</label><input id="m_cliente"></div>
       <div class="field"><label>Data de fechamento</label><input id="m_fechamento" type="date"></div>
@@ -212,6 +220,7 @@
       <button class="warnbtn" id="mDevolver">Devolver</button>
       <button class="ghost" id="mFechar">Fechar</button>
       <button class="ghost" id="mExcluir" style="display:none;color:var(--danger);border-color:var(--brand-soft)">Excluir</button>
+      <button class="ok" id="mReenviar" style="display:none">Reenviar para conferência</button>
       <span class="msg" id="mMsg" style="margin-left:auto"></span>
     </div>
   </div></div>
@@ -257,10 +266,10 @@
       perfil.uid=user.uid;perfil.vendedorId=slug(perfil.nome);
     }catch(e){perfil={uid:user.uid,nome:(user.email||"").split("@")[0],papel:"vendedor",vendedorId:slug((user.email||"").split("@")[0])};}
     $("uNome").textContent=CAPS(perfil.nome||user.email);$("uRole").textContent=perfil.papel==="admin"?"Administrador":"Vendedor";
-    const adm=perfil.papel==="admin";$("tabRevisao").style.display=adm?"inline-flex":"none";$("tabEquipe").style.display=adm?"inline-flex":"none";$("tabDashboard").style.display=adm?"inline-flex":"none";
+    const adm=perfil.papel==="admin";$("tabRevisao").style.display=adm?"inline-flex":"none";$("tabEquipe").style.display=adm?"inline-flex":"none";$("tabDashboard").style.display=adm?"inline-flex":"none";$("tabDevolvidos").style.display=adm?"none":"inline-flex";
     $("login").style.display="none";$("app").style.display="block";$("fechamento").value=hoje();
     try{await getDocs(query(PEDIDOS,limit(1)));setConn("ok","Conectado ao banco vendas-wa");}catch(e){setConn("err","Sem conexão com o banco.");}
-    await carregarEquipe();await configurarVendedor();calcular();if(adm)atualizarContadorRevisao();
+    await carregarEquipe();await configurarVendedor();calcular();if(adm)atualizarContadorRevisao();else atualizarContadorDevolvidos();
   });
 
   async function carregarEquipe(){
@@ -298,7 +307,7 @@
   function erro(t){const m=$("formMsg");m.className="msg err";m.textContent=t;}
 
   const tabs=document.querySelectorAll(".tab");
-  tabs.forEach(t=>t.addEventListener("click",()=>{tabs.forEach(x=>x.classList.remove("active"));t.classList.add("active");const v=t.dataset.view;$("view-novo").style.display=v==="novo"?"block":"none";$("view-lista").style.display=v==="lista"?"block":"none";$("view-revisao").style.display=v==="revisao"?"block":"none";$("view-equipe").style.display=v==="equipe"?"block":"none";$("view-dashboard").style.display=v==="dashboard"?"block":"none";if(v==="lista")carregarLista();if(v==="revisao")carregarRevisao();if(v==="equipe")renderEquipe();if(v==="dashboard")renderDashboard();}));
+  tabs.forEach(t=>t.addEventListener("click",()=>{tabs.forEach(x=>x.classList.remove("active"));t.classList.add("active");const v=t.dataset.view;$("view-novo").style.display=v==="novo"?"block":"none";$("view-lista").style.display=v==="lista"?"block":"none";$("view-revisao").style.display=v==="revisao"?"block":"none";$("view-equipe").style.display=v==="equipe"?"block":"none";$("view-dashboard").style.display=v==="dashboard"?"block":"none";$("view-devolvidos").style.display=v==="devolvidos"?"block":"none";if(v==="lista")carregarLista();if(v==="revisao")carregarRevisao();if(v==="equipe")renderEquipe();if(v==="dashboard")renderDashboard();if(v==="devolvidos")carregarDevolvidos();}));
 
   // ===== LISTA com filtros/busca/paginação =====
   let todosPedidos=[]; let pagina=1; const POR_PAGINA=40; let jaCarregou=false;
@@ -306,7 +315,9 @@
   async function carregarLista(){
     const box=$("listaBox");
     box.innerHTML='<div class="empty">Carregando…</div>';
-    try{todosPedidos=[];(await getDocs(PEDIDOS)).forEach(d=>todosPedidos.push({id:d.id,...d.data()}));todosPedidos=ordenarDesc(todosPedidos);jaCarregou=true;
+    try{todosPedidos=[];(await getDocs(PEDIDOS)).forEach(d=>todosPedidos.push({id:d.id,...d.data()}));
+      if(perfil.papel!=="admin") todosPedidos=todosPedidos.filter(p=>p.vendedorId===perfil.vendedorId||p.criadoPor===perfil.uid);
+      todosPedidos=ordenarDesc(todosPedidos);jaCarregou=true;
       // popula meses presentes (mantém o mês selecionado)
       const mesSel=$("fMes").value;
       const meses=[...new Set(todosPedidos.map(p=>p.mes).filter(Boolean))].sort((a,b)=>MESES.indexOf(a)-MESES.indexOf(b));
@@ -364,25 +375,39 @@
     $("m_modalidade").value=p.modalidade||"retirada";$("m_bruto").value=p.valorBruto??"";$("m_desconto").value=p.desconto??0;$("m_frete").value=p.frete??0;$("m_origem").value=p.origemMaterial||"proprio";$("m_repasse").value=p.repasseTerceiro??0;
     const ed=tsBr(p.editadoEm),cr=tsBr(p.criadoEm);$("m_rastro").innerHTML=(ed?`Última alteração por <b>${CAPS(p.editadoPorNome||"—")}</b> em ${ed}.`:"")+(cr?`<br>Lançado por <b>${CAPS(p.criadoPorNome||"—")}</b> em ${cr}.`:"")+(p.origem==="importacao"?"<br>Origem: importação da planilha.":"");
     $("m_motivo").value="";$("devbox").classList.remove("show");$("mMsg").textContent="";mCalc();
-    // botões conforme situação
-    const ehPend = conf==="pendente" || conf==="devolvido";
-    $("mConfirmar").style.display = ehPend ? "inline-block":"none";
-    $("mDevolver").style.display  = ehPend ? "inline-block":"none";
-    $("mSalvar").style.display    = ehPend ? "none":"inline-block";
-    $("mExcluir").style.display   = perfil.papel==="admin" ? "inline-block":"none";
-    // travado só quando confirmado
-    if(conf==="confirmado"){$("lockbar").classList.add("show");setTravado(true);}
-    else{$("lockbar").classList.remove("show");setTravado(false);}
+    // banner do motivo (quando devolvido)
+    if(conf==="devolvido" && p.motivoDevolucao){$("motivoBannerText").textContent="Motivo da devolução: "+p.motivoDevolucao;$("motivoBanner").style.display="flex";}
+    else $("motivoBanner").style.display="none";
+    const ehVend = perfil.papel!=="admin";
+    $("mTitulo").textContent = ehVend ? "Corrigir pedido" : "Revisar pedido";
+    if(ehVend){
+      // vendedor: só corrige e reenvia os devolvidos; os demais ficam só leitura
+      $("mConfirmar").style.display="none";$("mSalvar").style.display="none";$("mDevolver").style.display="none";$("mExcluir").style.display="none";
+      $("mReenviar").style.display = conf==="devolvido" ? "inline-block":"none";
+      $("lockbar").classList.remove("show");
+      setTravado(conf!=="devolvido");   // edita só se for devolvido
+      $("m_vendedor").disabled=true;     // vendedor não troca o próprio nome
+    }else{
+      $("mReenviar").style.display="none";$("m_vendedor").disabled=false;
+      const ehPend = conf==="pendente" || conf==="devolvido";
+      $("mConfirmar").style.display = ehPend ? "inline-block":"none";
+      $("mDevolver").style.display  = ehPend ? "inline-block":"none";
+      $("mSalvar").style.display    = ehPend ? "none":"inline-block";
+      $("mExcluir").style.display   = "inline-block";
+      if(conf==="confirmado"){$("lockbar").classList.add("show");setTravado(true);}
+      else{$("lockbar").classList.remove("show");setTravado(false);}
+    }
     $("modalBg").classList.add("show");
   }
   $("mDestravar").addEventListener("click",()=>{ if(confirm("Este pedido já está confirmado. Deseja destravar para editar?")){ setTravado(false); $("lockbar").classList.remove("show"); } });
   function fecharModal(){$("modalBg").classList.remove("show");idAtual=null;pAtual=null;}
   $("mFechar").addEventListener("click",fecharModal);$("modalBg").addEventListener("click",e=>{if(e.target===$("modalBg"))fecharModal();});
   function dadosEditados(){const c=mCalc();const vid=$("m_vendedor").value;const nome=teamNome[vid]||CAPS($("m_vendedor").options[$("m_vendedor").selectedIndex].text.replace(" (fora da lista)",""));const fech=$("m_fechamento").value||null;const mesRef=fech?new Date(fech+"T00:00:00"):null;return{numeroPedido:$("m_numero").value.trim(),cliente:$("m_cliente").value.trim(),vendedorId:vid,vendedorNome:nome,dataFechamento:fech,dataRegistro:fech,dataEvento:$("m_evento").value||null,mes:mesRef?MESES[mesRef.getMonth()]:null,modalidade:$("m_modalidade").value,valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,origemMaterial:$("m_origem").value,repasseTerceiro:c.rep,margemWA:c.margem,editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()};}
-  async function aplicar(patch, txtBtn, btn){btn.disabled=true;const orig=btn.textContent;btn.textContent=txtBtn;try{await updateDoc(doc(db,"pedidos",idAtual),patch);fecharModal();jaCarregou=false;if($("view-revisao").style.display!=="none")await carregarRevisao();if($("view-lista").style.display!=="none")await carregarLista();atualizarContadorRevisao();}catch(e){$("mMsg").className="msg err";$("mMsg").textContent="Erro ao salvar.";console.error(e);}finally{btn.disabled=false;btn.textContent=orig;}}
+  async function aplicar(patch, txtBtn, btn){btn.disabled=true;const orig=btn.textContent;btn.textContent=txtBtn;try{await updateDoc(doc(db,"pedidos",idAtual),patch);fecharModal();jaCarregou=false;if($("view-revisao").style.display!=="none")await carregarRevisao();if($("view-lista").style.display!=="none")await carregarLista();if($("view-devolvidos").style.display!=="none")await carregarDevolvidos();if(perfil.papel==="admin")atualizarContadorRevisao();else atualizarContadorDevolvidos();}catch(e){$("mMsg").className="msg err";$("mMsg").textContent="Erro ao salvar.";console.error(e);}finally{btn.disabled=false;btn.textContent=orig;}}
   $("mConfirmar").addEventListener("click",()=>aplicar({...dadosEditados(),conferencia:"confirmado",motivoDevolucao:null,confirmadoPor:perfil.uid,confirmadoEm:serverTimestamp()},"Confirmando…",$("mConfirmar")));
   $("mSalvar").addEventListener("click",()=>aplicar({...dadosEditados()},"Salvando…",$("mSalvar")));
   $("mDevolver").addEventListener("click",()=>{const box=$("devbox");if(!box.classList.contains("show")){box.classList.add("show");$("m_motivo").focus();return;}const motivo=$("m_motivo").value.trim();if(!motivo){$("mMsg").className="msg err";$("mMsg").textContent="Escreva o motivo da devolução.";return;}aplicar({...dadosEditados(),conferencia:"devolvido",motivoDevolucao:motivo,devolvidoPor:perfil.uid,devolvidoEm:serverTimestamp()},"Devolvendo…",$("mDevolver"));});
+  $("mReenviar").addEventListener("click",()=>{ if(!confirm("Reenviar este pedido para conferência da gestão?"))return; aplicar({...dadosEditados(),conferencia:"pendente",motivoDevolucao:null,reenviadoEm:serverTimestamp()},"Reenviando…",$("mReenviar")); });
   $("mExcluir").addEventListener("click",async()=>{
     if(!idAtual||!pAtual)return;
     const num=pAtual.numeroPedido||"(sem número)", cli=pAtual.cliente||"";
@@ -397,6 +422,21 @@
     }catch(e){$("mMsg").className="msg err";$("mMsg").textContent="Não foi possível excluir.";console.error(e);}
     finally{btn.disabled=false;btn.textContent="Excluir";}
   });
+  // ===== DEVOLVIDOS (vendedor) =====
+  async function atualizarContadorDevolvidos(){try{let n=0;(await getDocs(query(PEDIDOS,where("criadoPor","==",perfil.uid)))).forEach(d=>{if(d.data().conferencia==="devolvido")n++;});const c=$("devCount");if(n>0){c.style.display="inline-block";c.textContent=n;}else c.style.display="none";}catch(e){}}
+  let devolvidosCache={};
+  async function carregarDevolvidos(){
+    const box=$("devBox");box.innerHTML='<div class="empty">Carregando…</div>';devolvidosCache={};
+    try{
+      let arr=[];(await getDocs(query(PEDIDOS,where("criadoPor","==",perfil.uid)))).forEach(d=>{const x=d.data();if(x.conferencia==="devolvido"){devolvidosCache[d.id]=x;arr.push({id:d.id,...x});}});
+      if(!arr.length){box.innerHTML='<div class="empty">Nenhum pedido devolvido. Tudo certo! ✓</div>';return;}
+      arr.sort((a,b)=>String(a.dataFechamento||a.dataRegistro||"").localeCompare(String(b.dataFechamento||b.dataRegistro||"")));
+      const linhas=arr.map(p=>`<tr><td>${p.numeroPedido||"—"}</td><td>${p.cliente||"—"}</td><td style="color:var(--warn);font-size:12.5px">${p.motivoDevolucao||"—"}</td><td class="money">${money(p.valorLiquido)}</td><td><button class="btn-sm" data-dev="${p.id}">Corrigir</button></td></tr>`).join("");
+      box.innerHTML=`<p style="font-size:13px;color:var(--muted);margin:0 0 14px">${arr.length} pedido(s) para corrigir.</p><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Motivo</th><th>Líquido</th><th></th></tr></thead><tbody>${linhas}</tbody></table>`;
+      box.querySelectorAll("[data-dev]").forEach(b=>b.addEventListener("click",()=>abrirModal(b.dataset.dev,devolvidosCache[b.dataset.dev])));
+    }catch(e){box.innerHTML='<div class="empty">Não foi possível carregar.</div>';console.error(e);}
+  }
+
   // ===== PAINÉIS =====
   async function renderDashboard(){
     const box=$("dashBox"); box.innerHTML='<div class="empty">Calculando…</div>';
