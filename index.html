@@ -287,7 +287,49 @@
   async function configurarVendedor(){const wrap=$("vendField");if(perfil.papel==="admin"){let ops=opcoesVendedor(perfil.vendedorId);if(!equipe.some(v=>v.vendedorId===perfil.vendedorId))ops=`<option value="${perfil.vendedorId}" selected>${CAPS(perfil.nome)}</option>`+ops;wrap.innerHTML=`<label for="vendedor">Vendedor</label><select id="vendedor">${ops}</select>`;}else wrap.innerHTML=`<label>Vendedor</label><div class="fixedvend">${CAPS(perfil.nome)}</div>`;}
   function vendedorEscolhido(){const s=document.getElementById("vendedor");if(!s)return{vendedorId:perfil.vendedorId,nome:CAPS(perfil.nome)};return{vendedorId:s.value,nome:teamNome[s.value]||CAPS(s.options[s.selectedIndex].text)};}
 
-  function renderEquipe(){const box=$("eqBox");if(!equipe.length)box.innerHTML='<div class="empty">Nenhum vendedor cadastrado ainda.</div>';else{const linhas=equipe.map(v=>`<tr><td>${CAPS(v.nome)}</td><td><span class="code">${v.vendedorId}</span></td><td>${v.authUid?'<span class="badge conf">com login</span>':'<span class="badge mut">sem login</span>'}</td><td>${v.papel==="admin"?'<span class="badge dev">admin</span>':'vendedor'}</td></tr>`).join("");box.innerHTML=`<table><thead><tr><th>Nome</th><th>Identificador</th><th>Acesso</th><th>Papel</th></tr></thead><tbody>${linhas}</tbody></table>`;}const base=[["Aristeia","aristeia"],["Wallace","wallace"],["Emanuella","emanuella"],["Adrielly","adrielly"]];const temIds=new Set(equipe.map(v=>v.vendedorId));const faltam=base.filter(([n,id])=>!temIds.has(id));const fx=$("eqFalta");if(faltam.length){fx.innerHTML=`<div style="background:var(--warn-soft);border:1px solid #EAD9AE;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--warn);margin-bottom:14px">Faltam vendedores do histórico: <b>${faltam.map(f=>CAPS(f[0])).join(", ")}</b>.<button class="btn-sm" id="eqAddBase" style="margin-left:8px">Adicionar todos</button></div>`;$("eqAddBase").addEventListener("click",async()=>{for(const[n]of faltam)await addVendedor(n,true);await carregarEquipe();await configurarVendedor();});}else fx.innerHTML="";}
+  function renderEquipe(){
+    const box=$("eqBox");
+    if(!equipe.length){box.innerHTML='<div class="empty">Nenhum vendedor cadastrado ainda.</div>';}
+    else{
+      const linhas=equipe.map(v=>{
+        const ehEu = v.id===perfil.uid || v.authUid===perfil.uid;
+        return `<tr>
+          <td>${CAPS(v.nome)}</td>
+          <td><span class="code">${v.vendedorId}</span></td>
+          <td>${v.authUid?'<span class="badge conf">com login</span>':'<span class="badge mut">sem login</span>'}</td>
+          <td>${v.papel==="admin"?'<span class="badge dev">admin</span>':'vendedor'}</td>
+          <td style="white-space:nowrap"><button class="btn-sm" data-edit="${v.id}" data-nome="${(v.nome||"").replace(/"/g,'&quot;')}">Renomear</button>
+            ${ehEu?'':`<button class="btn-sm" data-del="${v.id}" data-nome="${(v.nome||"").replace(/"/g,'&quot;')}" style="color:var(--danger);border-color:var(--brand-soft);margin-left:6px">Remover</button>`}</td>
+        </tr>`;
+      }).join("");
+      box.innerHTML=`<table><thead><tr><th>Nome</th><th>Identificador</th><th>Acesso</th><th>Papel</th><th></th></tr></thead><tbody>${linhas}</tbody></table>`;
+      box.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>renomearVendedor(b.dataset.edit,b.dataset.nome)));
+      box.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>removerVendedor(b.dataset.del,b.dataset.nome)));
+    }
+    const base=[["Aristeia","aristeia"],["Wallace","wallace"],["Emanuella","emanuella"],["Adrielly","adrielly"]];
+    const temIds=new Set(equipe.map(v=>v.vendedorId));const faltam=base.filter(([n,id])=>!temIds.has(id));const fx=$("eqFalta");
+    if(faltam.length){fx.innerHTML=`<div style="background:var(--warn-soft);border:1px solid #EAD9AE;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--warn);margin-bottom:14px">Faltam vendedores do histórico: <b>${faltam.map(f=>CAPS(f[0])).join(", ")}</b>.<button class="btn-sm" id="eqAddBase" style="margin-left:8px">Adicionar todos</button></div>`;$("eqAddBase").addEventListener("click",async()=>{for(const[n]of faltam)await addVendedor(n,true);await carregarEquipe();await configurarVendedor();});}else fx.innerHTML="";
+  }
+  async function renomearVendedor(id, nomeAtual){
+    const novo=prompt("Nome do vendedor (o identificador é ajustado automaticamente).\n\nDica: para VINCULAR um login a um vendedor do histórico, digite exatamente o nome dele (ex.: EMANUELLA).", nomeAtual);
+    if(novo===null)return; const nome=novo.trim(); if(!nome)return;
+    const alvoId=slug(nome);
+    const esteDoc=equipe.find(v=>v.id===id);
+    const colide=equipe.find(v=>v.id!==id && v.vendedorId===alvoId);
+    try{
+      await updateDoc(doc(db,"vendedores",id),{nome:CAPS(nome),vendedorId:alvoId});
+      // se este é um login e existe uma linha "sem login" com o mesmo identificador, funde (remove a duplicata)
+      if(colide && esteDoc && esteDoc.authUid && !colide.authUid){ await deleteDoc(doc(db,"vendedores",colide.id)); }
+      await carregarEquipe(); await configurarVendedor();
+      $("eqMsg").className="msg ok"; $("eqMsg").textContent=colide?`Pronto! Login vinculado a ${CAPS(nome)}.`:`${CAPS(nome)} atualizado.`;
+    }catch(e){$("eqMsg").className="msg err";$("eqMsg").textContent="Não foi possível renomear.";console.error(e);}
+  }
+  async function removerVendedor(id, nome){
+    if(!confirm(`Remover ${CAPS(nome)} da equipe?\n\nOs pedidos já atribuídos a essa pessoa continuam no sistema — isso só tira o nome da lista.`))return;
+    try{ await deleteDoc(doc(db,"vendedores",id)); await carregarEquipe(); await configurarVendedor();
+      $("eqMsg").className="msg ok"; $("eqMsg").textContent=`${CAPS(nome)} removido da lista.`;
+    }catch(e){$("eqMsg").className="msg err";$("eqMsg").textContent="Não foi possível remover.";console.error(e);}
+  }
   async function addVendedor(nome,silent){nome=(nome||"").trim();const msg=$("eqMsg");if(!nome){if(!silent){msg.className="msg err";msg.textContent="Digite o nome do vendedor.";}return;}const id=slug(nome);if(equipe.some(v=>v.vendedorId===id)){if(!silent){msg.className="msg err";msg.textContent=`"${CAPS(nome)}" já existe na equipe (identificador ${id}).`;}return;}try{await setDoc(doc(db,"vendedores",id),{nome:CAPS(nome),vendedorId:id,ativo:true,papel:"vendedor",authUid:null,criadoEm:serverTimestamp()});if(!silent){msg.className="msg ok";msg.textContent=`${CAPS(nome)} adicionado.`;$("eqNome").value="";}}catch(e){if(!silent){msg.className="msg err";msg.textContent="Não foi possível adicionar.";}console.error(e);}}
   $("eqNome").addEventListener("input",()=>{$("eqMsg").textContent="";});
   $("eqAdd").addEventListener("click",async()=>{await addVendedor($("eqNome").value,false);await carregarEquipe();await configurarVendedor();});
@@ -423,12 +465,12 @@
     finally{btn.disabled=false;btn.textContent="Excluir";}
   });
   // ===== DEVOLVIDOS (vendedor) =====
-  async function atualizarContadorDevolvidos(){try{let n=0;(await getDocs(query(PEDIDOS,where("criadoPor","==",perfil.uid)))).forEach(d=>{if(d.data().conferencia==="devolvido")n++;});const c=$("devCount");if(n>0){c.style.display="inline-block";c.textContent=n;}else c.style.display="none";}catch(e){}}
+  async function atualizarContadorDevolvidos(){try{let n=0;(await getDocs(query(PEDIDOS,where("vendedorId","==",perfil.vendedorId)))).forEach(d=>{if(d.data().conferencia==="devolvido")n++;});const c=$("devCount");if(n>0){c.style.display="inline-block";c.textContent=n;}else c.style.display="none";}catch(e){}}
   let devolvidosCache={};
   async function carregarDevolvidos(){
     const box=$("devBox");box.innerHTML='<div class="empty">Carregando…</div>';devolvidosCache={};
     try{
-      let arr=[];(await getDocs(query(PEDIDOS,where("criadoPor","==",perfil.uid)))).forEach(d=>{const x=d.data();if(x.conferencia==="devolvido"){devolvidosCache[d.id]=x;arr.push({id:d.id,...x});}});
+      let arr=[];(await getDocs(query(PEDIDOS,where("vendedorId","==",perfil.vendedorId)))).forEach(d=>{const x=d.data();if(x.conferencia==="devolvido"){devolvidosCache[d.id]=x;arr.push({id:d.id,...x});}});
       if(!arr.length){box.innerHTML='<div class="empty">Nenhum pedido devolvido. Tudo certo! ✓</div>';return;}
       arr.sort((a,b)=>String(a.dataFechamento||a.dataRegistro||"").localeCompare(String(b.dataFechamento||b.dataRegistro||"")));
       const linhas=arr.map(p=>`<tr><td>${p.numeroPedido||"—"}</td><td>${p.cliente||"—"}</td><td style="color:var(--warn);font-size:12.5px">${p.motivoDevolucao||"—"}</td><td class="money">${money(p.valorLiquido)}</td><td><button class="btn-sm" data-dev="${p.id}">Corrigir</button></td></tr>`).join("");
