@@ -121,6 +121,7 @@
       <div class="connrow"><div class="conn"><span class="dot" id="dot"></span><span id="connMsg">Conectando…</span></div></div>
       <div class="tabs">
         <button class="tab active" data-view="novo">Novo pedido</button>
+        <button class="tab" data-view="aditivo">Novo aditivo</button>
         <button class="tab" data-view="lista">Pedidos lançados</button>
         <button class="tab" data-view="devolvidos" id="tabDevolvidos" style="display:none">Devolvidos<span class="count" id="devCount" style="display:none">0</span></button>
         <button class="tab" data-view="revisao" id="tabRevisao" style="display:none">Revisão<span class="count" id="revCount" style="display:none">0</span></button>
@@ -189,6 +190,38 @@
       <section id="view-devolvidos" style="display:none"><div class="card">
         <h2>Pedidos devolvidos</h2><p class="hint">Pedidos que a gestão devolveu para você corrigir. Ajuste o que foi pedido e reenvie para conferência.</p>
         <div id="devBox"><div class="empty">Carregando…</div></div>
+      </div></section>
+
+      <!-- NOVO ADITIVO -->
+      <section id="view-aditivo" style="display:none"><div class="card">
+        <h2>Novo aditivo</h2>
+        <p class="hint">Aditivo é o valor <b>a mais</b> em um contrato já fechado. Ache o contrato pelo número, confira, e preencha só o acréscimo.</p>
+        <div id="adBusca">
+          <div class="addrow">
+            <div class="field"><label for="adNumero">Nº do contrato original</label><input id="adNumero" placeholder="ex.: 260202/001" autocomplete="off"></div>
+            <button class="primary" id="adBuscar">Buscar</button>
+          </div>
+          <div class="msg" id="adBuscaMsg" style="margin-top:6px"></div>
+          <div id="adResultado" style="margin-top:14px"></div>
+        </div>
+        <div id="adForm" style="display:none">
+          <div style="background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:18px">
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600">Aditivo do contrato</div>
+            <div id="adContratoInfo" style="font-family:Fraunces,serif;font-size:16px;margin-top:2px"></div>
+          </div>
+          <div class="grid">
+            <div class="field"><label for="adFechamento">Data de fechamento do aditivo <span class="opt">— pode ser de outro mês</span></label><input id="adFechamento" type="date"></div>
+            <div class="field" id="adVendField"><label for="adVendedor">Vendedor do aditivo</label><select id="adVendedor"></select></div>
+            <div class="field"><label for="adModalidade">Modalidade</label><select id="adModalidade"><option value="retirada">Retirada</option><option value="entrega">Entrega</option></select></div>
+            <div class="field"><label for="adOrigem">Origem do material</label><select id="adOrigem"><option value="proprio">Próprio</option><option value="terceiro">Terceiro</option><option value="misto">Misto</option></select></div>
+            <div class="field"><label for="adBruto">Valor bruto do acréscimo (R$)</label><input id="adBruto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
+            <div class="field"><label for="adDesconto">Desconto (R$) <span class="opt">— opcional</span></label><input id="adDesconto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
+            <div class="field"><label for="adFrete">Frete (R$) <span class="opt">— opcional</span></label><input id="adFrete" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
+            <div class="field full" id="adRepasseWrap" style="display:none"><label for="adRepasse">Repasse ao terceiro (R$)</label><input id="adRepasse" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
+            <div class="calc"><div><div class="lbl">Líquido do aditivo</div><div class="val" id="adLiquido">R$ 0,00</div></div><div><div class="lbl">Margem WA</div><div class="val" id="adMargem">R$ 0,00</div></div></div>
+          </div>
+          <div class="actions"><button class="primary" id="adSalvar">Salvar aditivo</button><button class="ghost" id="adCancelar">Trocar de contrato</button><span class="msg" id="adFormMsg"></span></div>
+        </div>
       </div></section>
     </div>
   </div>
@@ -349,7 +382,7 @@
   function erro(t){const m=$("formMsg");m.className="msg err";m.textContent=t;}
 
   const tabs=document.querySelectorAll(".tab");
-  tabs.forEach(t=>t.addEventListener("click",()=>{tabs.forEach(x=>x.classList.remove("active"));t.classList.add("active");const v=t.dataset.view;$("view-novo").style.display=v==="novo"?"block":"none";$("view-lista").style.display=v==="lista"?"block":"none";$("view-revisao").style.display=v==="revisao"?"block":"none";$("view-equipe").style.display=v==="equipe"?"block":"none";$("view-dashboard").style.display=v==="dashboard"?"block":"none";$("view-devolvidos").style.display=v==="devolvidos"?"block":"none";if(v==="lista")carregarLista();if(v==="revisao")carregarRevisao();if(v==="equipe")renderEquipe();if(v==="dashboard")renderDashboard();if(v==="devolvidos")carregarDevolvidos();}));
+  tabs.forEach(t=>t.addEventListener("click",()=>{tabs.forEach(x=>x.classList.remove("active"));t.classList.add("active");const v=t.dataset.view;$("view-novo").style.display=v==="novo"?"block":"none";$("view-lista").style.display=v==="lista"?"block":"none";$("view-revisao").style.display=v==="revisao"?"block":"none";$("view-equipe").style.display=v==="equipe"?"block":"none";$("view-dashboard").style.display=v==="dashboard"?"block":"none";$("view-devolvidos").style.display=v==="devolvidos"?"block":"none";$("view-aditivo").style.display=v==="aditivo"?"block":"none";if(v==="lista")carregarLista();if(v==="revisao")carregarRevisao();if(v==="equipe")renderEquipe();if(v==="dashboard")renderDashboard();if(v==="devolvidos")carregarDevolvidos();if(v==="aditivo")resetAditivo();}));
 
   // ===== LISTA com filtros/busca/paginação =====
   let todosPedidos=[]; let pagina=1; const POR_PAGINA=40; let jaCarregou=false;
@@ -386,7 +419,7 @@
     const maxPag=Math.ceil(total/POR_PAGINA);if(pagina>maxPag)pagina=maxPag;if(pagina<1)pagina=1;
     const ini=(pagina-1)*POR_PAGINA;const pageArr=arr.slice(ini,ini+POR_PAGINA);
     const linhas=pageArr.map(p=>`<tr>
-      <td>${p.numeroPedido||"—"}</td><td>${p.cliente||"—"}</td><td>${CAPS(p.vendedorNome||p.vendedorId||"—")}</td>
+      <td>${p.numeroPedido||"—"} ${(p.tipo==="aditivo")?'<span class="badge mut">aditivo</span>':''}</td><td>${p.cliente||"—"}</td><td>${CAPS(p.vendedorNome||p.vendedorId||"—")}</td>
       <td class="data">${brData(p.dataFechamento||p.dataRegistro)}</td><td class="data">${brData(p.dataEvento)}</td>
       <td class="money">${money(p.valorLiquido)}</td><td>${badge(p.conferencia||"pendente")}</td>
       <td><button class="btn-sm" data-ver="${p.id}">Abrir</button></td></tr>`).join("");
@@ -411,7 +444,7 @@
   function setTravado(v){travado=v;CAMPOS.forEach(id=>$(id).disabled=v);}
   function abrirModal(id,p){
     if(!p)return;idAtual=id;pAtual=p;const conf=p.conferencia||"pendente";
-    $("mSub").textContent=`Nº ${p.numeroPedido||"—"} • ${badge(conf).replace(/<[^>]+>/g,"").trim()} • lançado por ${CAPS(p.vendedorNome||p.vendedorId||"—")}`;
+    $("mSub").textContent=`${p.tipo==="aditivo"?"ADITIVO • ":""}Nº ${p.numeroPedido||"—"} • ${badge(conf).replace(/<[^>]+>/g,"").trim()} • lançado por ${CAPS(p.vendedorNome||p.vendedorId||"—")}`;
     $("m_numero").value=p.numeroPedido||"";$("m_cliente").value=p.cliente||"";$("m_fechamento").value=(p.dataFechamento||p.dataRegistro||"").slice(0,10);$("m_evento").value=(p.dataEvento||"").slice(0,10);
     let ops=opcoesVendedor(p.vendedorId);if(p.vendedorId&&!equipe.some(v=>v.vendedorId===p.vendedorId))ops=`<option value="${p.vendedorId}" selected>${CAPS(p.vendedorNome||p.vendedorId)} (fora da lista)</option>`+ops;$("m_vendedor").innerHTML=ops;
     $("m_modalidade").value=p.modalidade||"retirada";$("m_bruto").value=p.valorBruto??"";$("m_desconto").value=p.desconto??0;$("m_frete").value=p.frete??0;$("m_origem").value=p.origemMaterial||"proprio";$("m_repasse").value=p.repasseTerceiro??0;
@@ -464,6 +497,81 @@
     }catch(e){$("mMsg").className="msg err";$("mMsg").textContent="Não foi possível excluir.";console.error(e);}
     finally{btn.disabled=false;btn.textContent="Excluir";}
   });
+  // ===== NOVO ADITIVO =====
+  let contratoPai=null;
+  function resetAditivo(){
+    contratoPai=null;$("adNumero").value="";$("adBuscaMsg").textContent="";$("adResultado").innerHTML="";
+    $("adForm").style.display="none";$("adBusca").style.display="block";
+    ["adBruto","adDesconto","adFrete","adRepasse"].forEach(id=>$(id).value="");
+    $("adOrigem").value="proprio";$("adRepasseWrap").style.display="none";$("adFechamento").value=hoje();
+    $("adFormMsg").textContent="";adCalc();
+  }
+  $("adBuscar").addEventListener("click",buscarContrato);
+  $("adNumero").addEventListener("keydown",e=>{if(e.key==="Enter")buscarContrato();});
+  async function buscarContrato(){
+    const num=$("adNumero").value.trim();const msg=$("adBuscaMsg");msg.textContent="";$("adResultado").innerHTML="";
+    if(!num){msg.className="msg err";msg.textContent="Digite o número do contrato.";return;}
+    const btn=$("adBuscar");btn.disabled=true;btn.textContent="Buscando…";
+    try{
+      let achados=[];(await getDocs(query(PEDIDOS,where("numeroPedido","==",num)))).forEach(d=>achados.push({id:d.id,...d.data()}));
+      const originais=achados.filter(p=>(p.tipo||"original")==="original");
+      if(!originais.length){msg.className="msg err";msg.textContent="Nenhum contrato com esse número. Confira o número digitado.";return;}
+      // prefere o confirmado
+      const conf=originais.find(p=>p.conferencia==="confirmado");
+      const alvo=conf||originais[0];
+      if(!conf){
+        $("adResultado").innerHTML=`<div style="background:var(--warn-soft);border:1px solid #EAD9AE;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--warn)">Esse contrato existe mas ainda <b>não está confirmado</b> (${alvo.conferencia||"pendente"}). Confirme o contrato antes de adicionar um aditivo, para não grudar acréscimo em contrato ainda em conferência.</div>`;
+        return;
+      }
+      contratoPai=alvo;
+      $("adResultado").innerHTML=`<div style="background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 16px">
+        <div style="font-family:Fraunces,serif;font-size:16px;margin-bottom:6px">${alvo.numeroPedido} — ${alvo.cliente||"—"}</div>
+        <div style="font-size:13px;color:var(--muted)">Vendedor do contrato: ${CAPS(alvo.vendedorNome||alvo.vendedorId||"—")} • Líquido do contrato: ${money(alvo.valorLiquido)} • Evento em ${brData(alvo.dataEvento)}</div>
+        <button class="primary" id="adUsar" style="margin-top:12px">Usar este contrato</button></div>`;
+      $("adUsar").addEventListener("click",usarContrato);
+    }catch(e){msg.className="msg err";msg.textContent="Erro na busca. Tente de novo.";console.error(e);}
+    finally{btn.disabled=false;btn.textContent="Buscar";}
+  }
+  async function usarContrato(){
+    if(!contratoPai)return;
+    $("adContratoInfo").textContent=`${contratoPai.numeroPedido} — ${contratoPai.cliente||"—"}`;
+    // vendedor do aditivo: admin escolhe; vendedor comum fica em si mesmo
+    const wrap=$("adVendField");
+    if(perfil.papel==="admin"){
+      let ops=opcoesVendedor(contratoPai.vendedorId);
+      wrap.innerHTML=`<label for="adVendedor">Vendedor do aditivo <span class="opt">— quem vendeu o acréscimo</span></label><select id="adVendedor">${ops}</select>`;
+    }else wrap.innerHTML=`<label>Vendedor do aditivo</label><div class="fixedvend">${CAPS(perfil.nome)}</div>`;
+    $("adFechamento").value=hoje();adCalc();
+    $("adBusca").style.display="none";$("adForm").style.display="block";
+  }
+  $("adCancelar").addEventListener("click",resetAditivo);
+  function adCalc(){const b=parseFloat($("adBruto").value)||0,d=parseFloat($("adDesconto").value)||0,f=parseFloat($("adFrete").value)||0,r=parseFloat($("adRepasse").value)||0;const liq=b-d+f,mar=liq-r;$("adLiquido").textContent=money(liq);$("adMargem").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
+  ["adBruto","adDesconto","adFrete","adRepasse"].forEach(id=>$(id).addEventListener("input",adCalc));
+  $("adOrigem").addEventListener("change",e=>{const m=e.target.value!=="proprio";$("adRepasseWrap").style.display=m?"flex":"none";if(!m){$("adRepasse").value="";adCalc();}});
+  function adVendedorEscolhido(){const s=document.getElementById("adVendedor");if(!s)return{vendedorId:perfil.vendedorId,nome:CAPS(perfil.nome)};return{vendedorId:s.value,nome:teamNome[s.value]||CAPS(s.options[s.selectedIndex].text)};}
+  $("adSalvar").addEventListener("click",salvarAditivo);
+  async function salvarAditivo(){
+    const msg=$("adFormMsg");msg.textContent="";
+    if(!contratoPai){msg.className="msg err";msg.textContent="Busque e selecione um contrato primeiro.";return;}
+    const c=adCalc();if(c.bruto<=0){msg.className="msg err";msg.textContent="O valor bruto do acréscimo precisa ser maior que zero.";return;}
+    const fech=$("adFechamento").value||hoje();const vend=adVendedorEscolhido();
+    const btn=$("adSalvar");btn.disabled=true;btn.textContent="Salvando…";
+    const mesRef=new Date(fech+"T00:00:00");
+    const conf=perfil.papel==="admin"?"confirmado":"pendente";
+    try{
+      await addDoc(PEDIDOS,{numeroPedido:contratoPai.numeroPedido,dataEvento:contratoPai.dataEvento||null,dataRegistro:fech,dataFechamento:fech,mes:MESES[mesRef.getMonth()],
+        cliente:contratoPai.cliente||"",vendedorId:vend.vendedorId,vendedorNome:vend.nome,
+        valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,
+        status:"ativo",tipo:"aditivo",contratoRefId:contratoPai.id,modalidade:$("adModalidade").value,origemMaterial:$("adOrigem").value,
+        repasseTerceiro:c.rep,margemWA:c.margem,possivelDuplicado:false,conferencia:conf,motivoDevolucao:null,
+        criadoPor:perfil.uid,criadoPorNome:CAPS(perfil.nome),criadoEm:serverTimestamp(),editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()});
+      msg.className="msg ok";msg.textContent=conf==="confirmado"?`Aditivo do contrato ${contratoPai.numeroPedido} salvo e confirmado.`:`Aditivo enviado para conferência.`;
+      jaCarregou=false;if(perfil.papel==="admin")atualizarContadorRevisao();
+      setTimeout(resetAditivo,1400);
+    }catch(e){msg.className="msg err";msg.textContent=(e&&e.code&&String(e.code).includes("permission"))?"Sem permissão — verifique as regras.":"Não foi possível salvar o aditivo.";console.error(e);}
+    finally{btn.disabled=false;btn.textContent="Salvar aditivo";}
+  }
+
   // ===== DEVOLVIDOS (vendedor) =====
   async function atualizarContadorDevolvidos(){try{let n=0;(await getDocs(query(PEDIDOS,where("vendedorId","==",perfil.vendedorId)))).forEach(d=>{if(d.data().conferencia==="devolvido")n++;});const c=$("devCount");if(n>0){c.style.display="inline-block";c.textContent=n;}else c.style.display="none";}catch(e){}}
   let devolvidosCache={};
