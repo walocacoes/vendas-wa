@@ -660,7 +660,35 @@
 
       const aviso = nConf===0 ? `<div style="background:var(--warn-soft);border:1px solid #EAD9AE;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--warn);margin-bottom:6px">Nenhum pedido confirmado ainda — os painéis estão zerados de propósito. Vá na aba <b>Revisão</b> confirmando pedidos e volte aqui: os números sobem na hora.</div>` : "";
 
-      box.innerHTML = aviso + progresso + cards + secTitle("Realizado × Meta por mês") + grafMes + secTitle("Ranking de vendedores") + rankRows + secTitle("Margem por origem do material") + orgRows;
+      // ===== MARKETING =====
+      // faturamento por canal (só confirmados)
+      const canalAgg={}; conf.forEach(p=>{const k=p.canal||"__nd"; if(!canalAgg[k])canalAgg[k]={liq:0,n:0}; canalAgg[k].liq+=Number(p.valorLiquido)||0; canalAgg[k].n++;});
+      const canalArr=Object.entries(canalAgg).map(([k,v])=>({k,label:k==="__nd"?"Não informado":canalLabel(k),...v})).sort((a,b)=>b.liq-a.liq);
+      const maxC=Math.max(1,...canalArr.map(c=>c.liq));
+      const canalRows = canalArr.length ? canalArr.map(c=>`<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><b>${c.label}</b><span style="color:var(--muted)">${money(c.liq)} • ${c.n} venda(s)</span></div><div style="height:12px;background:#EEECE6;border-radius:99px"><div style="height:100%;width:${Math.round(c.liq/maxC*100)}%;background:${c.k==="__nd"?"#B9B6AE":"var(--brand)"};border-radius:99px"></div></div></div>`).join("") : `<div class="empty">Sem dados de canal ainda.</div>`;
+
+      // novos vs recorrentes
+      const tc={novo:{n:0,liq:0},recorrente:{n:0,liq:0},__nd:{n:0,liq:0}};
+      conf.forEach(p=>{const k=(p.tipoCliente==="novo"||p.tipoCliente==="recorrente")?p.tipoCliente:"__nd";tc[k].n++;tc[k].liq+=Number(p.valorLiquido)||0;});
+      const totTc=tc.novo.n+tc.recorrente.n+tc.__nd.n;
+      const pctNovo=totTc?Math.round(tc.novo.n/totTc*100):0, pctRec=totTc?Math.round(tc.recorrente.n/totTc*100):0, pctNd=totTc?100-pctNovo-pctRec:0;
+      const tcRows = totTc ? `<div style="display:flex;height:22px;border-radius:99px;overflow:hidden;border:1px solid var(--line);margin-bottom:12px">
+          <div style="width:${pctNovo}%;background:var(--ok)"></div><div style="width:${pctRec}%;background:var(--brand)"></div><div style="width:${pctNd}%;background:#D8D5CD"></div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+          ${card("Novos",tc.novo.n+` (${pctNovo}%)`,money(tc.novo.liq))}
+          ${card("Recorrentes",tc.recorrente.n+` (${pctRec}%)`,money(tc.recorrente.liq))}
+          ${tc.__nd.n?card("Não informado",tc.__nd.n+` (${pctNd}%)`,money(tc.__nd.liq)):""}</div>` : `<div class="empty">Sem dados de tipo de cliente ainda.</div>`;
+
+      // cruzamento canal x novo/recorrente
+      const cruz={}; conf.forEach(p=>{const c=p.canal||"__nd"; if(!cruz[c])cruz[c]={novo:0,rec:0}; if(p.tipoCliente==="novo")cruz[c].novo++; else if(p.tipoCliente==="recorrente")cruz[c].rec++;});
+      const cruzKeys=Object.keys(cruz).filter(c=>cruz[c].novo||cruz[c].rec).sort((a,b)=>(cruz[b].novo+cruz[b].rec)-(cruz[a].novo+cruz[a].rec));
+      const cruzRows = cruzKeys.length ? `<table><thead><tr><th>Canal</th><th>Clientes novos</th><th>Recorrentes</th></tr></thead><tbody>${cruzKeys.map(c=>`<tr><td>${c==="__nd"?"Não informado":canalLabel(c)}</td><td>${cruz[c].novo}</td><td>${cruz[c].rec}</td></tr>`).join("")}</tbody></table>` : `<div class="empty">Preencha canal e tipo de cliente nos pedidos para ver este cruzamento.</div>`;
+
+      const marketing = secTitle("Faturamento por canal") + canalRows
+        + secTitle("Clientes novos × recorrentes") + tcRows
+        + secTitle("Cruzamento: canal × tipo de cliente") + `<p style="font-size:12px;color:var(--muted);margin:-6px 0 12px">Quem traz cliente novo é o marketing trabalhando; recompra é relacionamento.</p>` + cruzRows;
+
+      box.innerHTML = aviso + progresso + cards + secTitle("Realizado × Meta por mês") + grafMes + secTitle("Ranking de vendedores") + rankRows + secTitle("Margem por origem do material") + orgRows + `<div style="border-top:2px solid var(--line);margin:30px 0 4px"></div>` + `<h3 style="font-family:Fraunces,serif;font-size:17px;margin:20px 0 4px">Marketing</h3>` + marketing;
     }catch(e){ box.innerHTML='<div class="empty">Não foi possível montar os painéis.</div>'; console.error(e); }
   }
 </script>
