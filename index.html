@@ -98,6 +98,22 @@
   .lockbar{grid-column:1/-1;display:none;gap:10px;align-items:center;background:var(--ok-soft);border:1px solid #BFE0CC;color:var(--ok);padding:10px 14px;border-radius:10px;font-size:13px;margin-top:4px}
   .lockbar.show{display:flex}
   @media(max-width:640px){.grid,.calc{grid-template-columns:1fr}.topbar .wa-logo{height:38px}}
+  #printHeader{display:none;align-items:center;gap:16px;background:#141414;padding:16px 20px;border-bottom:3px solid var(--brand);margin-bottom:22px}
+  #printHeader .wa-logo{height:40px}
+  #printHeader .ph-title{color:#fff;font-family:Fraunces,serif;font-size:18px;font-weight:600;line-height:1.2}
+  #printHeader .ph-sub{color:#B9B6AE;font-size:12px}
+  @media print{
+    @page{margin:12mm}
+    body{background:#fff}
+    .topbar,.tabs,.connrow,#login,.no-print{display:none !important}
+    #view-novo,#view-lista,#view-revisao,#view-equipe,#view-devolvidos,#view-aditivo{display:none !important}
+    #app{display:block !important}
+    .wrap{max-width:none;padding:0}
+    .card{box-shadow:none;border:none;padding:0}
+    #printHeader{display:flex !important}
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    h3{break-after:avoid} table,.calc,.card>div{break-inside:avoid}
+  }
 </style>
 </head>
 <body>
@@ -112,6 +128,10 @@
   </div>
 
   <div id="app">
+    <div id="printHeader">
+      <img class="wa-logo" alt="WA Locações & Eventos">
+      <div><div class="ph-title">Relatório de Vendas</div><div class="ph-sub" id="phData"></div></div>
+    </div>
     <div class="topbar"><div class="inner">
       <img class="wa-logo" alt="WA Locações & Eventos">
       <div class="userbox"><div class="who"><b id="uNome">—</b><span class="role" id="uRole"></span></div><button id="btnSair">Sair</button></div>
@@ -184,7 +204,8 @@
 
       <!-- PAINÉIS -->
       <section id="view-dashboard" style="display:none"><div class="card">
-        <h2>Painéis</h2><p class="hint">Contam apenas pedidos <b>confirmados</b>. Sobem conforme você aprova os pendentes.</p>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h2>Painéis</h2><p class="hint" style="margin-bottom:0">Contam apenas pedidos <b>confirmados</b>. Sobem conforme você aprova os pendentes.</p></div><button class="btn-sm no-print" id="btnPdf">Salvar PDF</button></div>
+        <div style="height:14px"></div>
         <div id="dashBox"><div class="empty">Carregando…</div></div>
       </div></section>
 
@@ -597,6 +618,8 @@
   }
 
   // ===== PAINÉIS =====
+  const btnPdf=$("btnPdf");
+  if(btnPdf) btnPdf.addEventListener("click",()=>{ $("phData").textContent="WA Locações & Eventos  •  "+new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}); window.print(); });
   async function renderDashboard(){
     const box=$("dashBox"); box.innerHTML='<div class="empty">Calculando…</div>';
     try{
