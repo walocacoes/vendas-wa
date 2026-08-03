@@ -140,6 +140,8 @@
           <div class="field" id="vendField"><label for="vendedor">Vendedor</label><select id="vendedor"></select></div>
           <div class="field"><label for="modalidade">Modalidade</label><select id="modalidade"><option value="retirada">Retirada</option><option value="entrega">Entrega</option></select></div>
           <div class="field"><label for="origem">Origem do material</label><select id="origem"><option value="proprio">Próprio</option><option value="terceiro">Terceiro</option><option value="misto">Misto</option></select></div>
+          <div class="field"><label for="canal">Canal de aquisição <span class="opt">— por onde veio</span></label><select id="canal"></select></div>
+          <div class="field"><label for="tipoCliente">Cliente</label><select id="tipoCliente"><option value="">— selecione —</option><option value="novo">Novo</option><option value="recorrente">Recorrente</option></select></div>
           <div class="field"><label for="bruto">Valor bruto (R$)</label><input id="bruto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
           <div class="field"><label for="desconto">Desconto (R$) <span class="opt">— opcional</span></label><input id="desconto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
           <div class="field"><label for="frete">Frete (R$) <span class="opt">— opcional</span></label><input id="frete" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
@@ -214,6 +216,8 @@
             <div class="field" id="adVendField"><label for="adVendedor">Vendedor do aditivo</label><select id="adVendedor"></select></div>
             <div class="field"><label for="adModalidade">Modalidade</label><select id="adModalidade"><option value="retirada">Retirada</option><option value="entrega">Entrega</option></select></div>
             <div class="field"><label for="adOrigem">Origem do material</label><select id="adOrigem"><option value="proprio">Próprio</option><option value="terceiro">Terceiro</option><option value="misto">Misto</option></select></div>
+            <div class="field"><label for="adCanal">Canal de aquisição</label><select id="adCanal"></select></div>
+            <div class="field"><label for="adTipoCliente">Cliente</label><select id="adTipoCliente"><option value="">— selecione —</option><option value="novo">Novo</option><option value="recorrente">Recorrente</option></select></div>
             <div class="field"><label for="adBruto">Valor bruto do acréscimo (R$)</label><input id="adBruto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
             <div class="field"><label for="adDesconto">Desconto (R$) <span class="opt">— opcional</span></label><input id="adDesconto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
             <div class="field"><label for="adFrete">Frete (R$) <span class="opt">— opcional</span></label><input id="adFrete" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
@@ -242,6 +246,8 @@
       <div class="field"><label>Desconto (R$)</label><input id="m_desconto" type="number" step="0.01"></div>
       <div class="field"><label>Frete (R$)</label><input id="m_frete" type="number" step="0.01"></div>
       <div class="field"><label>Origem</label><select id="m_origem"><option value="proprio">Próprio</option><option value="terceiro">Terceiro</option><option value="misto">Misto</option></select></div>
+      <div class="field"><label>Canal de aquisição</label><select id="m_canal"></select></div>
+      <div class="field"><label>Cliente</label><select id="m_tipoCliente"><option value="">— selecione —</option><option value="novo">Novo</option><option value="recorrente">Recorrente</option></select></div>
       <div class="field full"><label>Repasse ao terceiro (R$)</label><input id="m_repasse" type="number" step="0.01"></div>
       <div class="calc"><div><div class="lbl">Valor líquido</div><div class="val" id="m_liquido">R$ 0,00</div></div><div><div class="lbl">Margem WA</div><div class="val" id="m_margem">R$ 0,00</div></div></div>
       <div class="rastro" id="m_rastro"></div>
@@ -276,6 +282,9 @@
   const slug=s=>(s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
   const semAcento=s=>(s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
   const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const CANAIS=[["instagram","Instagram"],["whatsapp","WhatsApp"],["ligacao","Ligação"],["indicacao","Indicação"],["presencial","Presencial"],["facebook","Facebook"],["google","Google"],["trafego_pago","Tráfego pago (anúncio)"],["feiras_eventos","Feiras/eventos"],["parceria","Parceria (decoradora, buffet, etc.)"]];
+  const canalLabel=v=>{const c=CANAIS.find(x=>x[0]===v);return c?c[1]:(v||"—");};
+  function fillCanais(){const html='<option value="">— selecione —</option>'+CANAIS.map(([v,l])=>`<option value="${v}">${l}</option>`).join("");["canal","adCanal","m_canal"].forEach(id=>{const el=$(id);if(el)el.innerHTML=html;});}
   const brData=iso=>{if(!iso)return "—";const p=String(iso).slice(0,10).split("-");return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:"—";};
   const hoje=()=>new Date().toISOString().slice(0,10);
   function dataEventoDoNumero(n){const m=String(n).match(/^(\d{2})(\d{2})(\d{2})/);if(!m)return null;const[,yy,mm,dd]=m;const iso=`20${yy}-${mm}-${dd}`;const d=new Date(iso+"T00:00:00");if(isNaN(d))return null;return{iso,br:`${dd}/${mm}/20${yy}`};}
@@ -302,7 +311,7 @@
     const adm=perfil.papel==="admin";$("tabRevisao").style.display=adm?"inline-flex":"none";$("tabEquipe").style.display=adm?"inline-flex":"none";$("tabDashboard").style.display=adm?"inline-flex":"none";$("tabDevolvidos").style.display=adm?"none":"inline-flex";
     $("login").style.display="none";$("app").style.display="block";$("fechamento").value=hoje();
     try{await getDocs(query(PEDIDOS,limit(1)));setConn("ok","Conectado ao banco vendas-wa");}catch(e){setConn("err","Sem conexão com o banco.");}
-    await carregarEquipe();await configurarVendedor();calcular();if(adm)atualizarContadorRevisao();else atualizarContadorDevolvidos();
+    await carregarEquipe();await configurarVendedor();fillCanais();calcular();if(adm)atualizarContadorRevisao();else atualizarContadorDevolvidos();
   });
 
   async function carregarEquipe(){
@@ -377,7 +386,7 @@
 
   $("salvar").addEventListener("click",salvar);
   async function salvar(){const msg=$("formMsg");msg.textContent="";const numero=$("numero").value.trim(),cliente=$("cliente").value.trim(),vend=vendedorEscolhido();if(!numero)return erro("Informe o número do pedido.");if(!cliente)return erro("Informe o nome do cliente.");const fech=$("fechamento").value||hoje();const c=calcular();if(c.bruto<=0)return erro("O valor bruto precisa ser maior que zero.");const b=$("salvar");b.disabled=true;b.textContent="Salvando…";const de=dataEventoDoNumero(numero),mesRef=new Date(fech+"T00:00:00");const conf=perfil.papel==="admin"?"confirmado":"pendente";
-    try{await addDoc(PEDIDOS,{numeroPedido:numero,dataEvento:de?de.iso:null,dataRegistro:fech,dataFechamento:fech,mes:MESES[mesRef.getMonth()],cliente,vendedorId:vend.vendedorId,vendedorNome:vend.nome,valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,status:"ativo",tipo:"original",contratoRefId:null,modalidade:$("modalidade").value,origemMaterial:$("origem").value,repasseTerceiro:c.rep,margemWA:c.margem,possivelDuplicado:ehDuplicado,conferencia:conf,motivoDevolucao:null,criadoPor:perfil.uid,criadoPorNome:CAPS(perfil.nome),criadoEm:serverTimestamp(),editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()});["numero","cliente","bruto","desconto","frete","repasse"].forEach(id=>$(id).value="");$("fechamento").value=hoje();$("eventoOut").textContent="";$("dupAlert").classList.remove("show");ehDuplicado=false;$("repasseWrap").style.display="none";$("origem").value="proprio";calcular();msg.className="msg ok";msg.textContent=conf==="confirmado"?`Pedido ${numero} salvo e confirmado.`:`Pedido ${numero} enviado para conferência.`;if(perfil.papel==="admin")atualizarContadorRevisao();}
+    try{await addDoc(PEDIDOS,{numeroPedido:numero,dataEvento:de?de.iso:null,dataRegistro:fech,dataFechamento:fech,mes:MESES[mesRef.getMonth()],cliente,vendedorId:vend.vendedorId,vendedorNome:vend.nome,valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,status:"ativo",tipo:"original",contratoRefId:null,modalidade:$("modalidade").value,origemMaterial:$("origem").value,canal:$("canal").value||null,tipoCliente:$("tipoCliente").value||null,repasseTerceiro:c.rep,margemWA:c.margem,possivelDuplicado:ehDuplicado,conferencia:conf,motivoDevolucao:null,criadoPor:perfil.uid,criadoPorNome:CAPS(perfil.nome),criadoEm:serverTimestamp(),editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()});["numero","cliente","bruto","desconto","frete","repasse"].forEach(id=>$(id).value="");$("fechamento").value=hoje();$("eventoOut").textContent="";$("dupAlert").classList.remove("show");ehDuplicado=false;$("repasseWrap").style.display="none";$("origem").value="proprio";$("canal").value="";$("tipoCliente").value="";calcular();msg.className="msg ok";msg.textContent=conf==="confirmado"?`Pedido ${numero} salvo e confirmado.`:`Pedido ${numero} enviado para conferência.`;if(perfil.papel==="admin")atualizarContadorRevisao();}
     catch(e){erro("Não foi possível salvar. Verifique a conexão e tente de novo.");console.error(e);}finally{b.disabled=false;b.textContent="Salvar pedido";}}
   function erro(t){const m=$("formMsg");m.className="msg err";m.textContent=t;}
 
@@ -447,7 +456,7 @@
     $("mSub").textContent=`${p.tipo==="aditivo"?"ADITIVO • ":""}Nº ${p.numeroPedido||"—"} • ${badge(conf).replace(/<[^>]+>/g,"").trim()} • lançado por ${CAPS(p.vendedorNome||p.vendedorId||"—")}`;
     $("m_numero").value=p.numeroPedido||"";$("m_cliente").value=p.cliente||"";$("m_fechamento").value=(p.dataFechamento||p.dataRegistro||"").slice(0,10);$("m_evento").value=(p.dataEvento||"").slice(0,10);
     let ops=opcoesVendedor(p.vendedorId);if(p.vendedorId&&!equipe.some(v=>v.vendedorId===p.vendedorId))ops=`<option value="${p.vendedorId}" selected>${CAPS(p.vendedorNome||p.vendedorId)} (fora da lista)</option>`+ops;$("m_vendedor").innerHTML=ops;
-    $("m_modalidade").value=p.modalidade||"retirada";$("m_bruto").value=p.valorBruto??"";$("m_desconto").value=p.desconto??0;$("m_frete").value=p.frete??0;$("m_origem").value=p.origemMaterial||"proprio";$("m_repasse").value=p.repasseTerceiro??0;
+    $("m_modalidade").value=p.modalidade||"retirada";$("m_bruto").value=p.valorBruto??"";$("m_desconto").value=p.desconto??0;$("m_frete").value=p.frete??0;$("m_origem").value=p.origemMaterial||"proprio";$("m_canal").value=p.canal||"";$("m_tipoCliente").value=p.tipoCliente||"";$("m_repasse").value=p.repasseTerceiro??0;
     const ed=tsBr(p.editadoEm),cr=tsBr(p.criadoEm);$("m_rastro").innerHTML=(ed?`Última alteração por <b>${CAPS(p.editadoPorNome||"—")}</b> em ${ed}.`:"")+(cr?`<br>Lançado por <b>${CAPS(p.criadoPorNome||"—")}</b> em ${cr}.`:"")+(p.origem==="importacao"?"<br>Origem: importação da planilha.":"");
     $("m_motivo").value="";$("devbox").classList.remove("show");$("mMsg").textContent="";mCalc();
     // banner do motivo (quando devolvido)
@@ -477,7 +486,7 @@
   $("mDestravar").addEventListener("click",()=>{ if(confirm("Este pedido já está confirmado. Deseja destravar para editar?")){ setTravado(false); $("lockbar").classList.remove("show"); } });
   function fecharModal(){$("modalBg").classList.remove("show");idAtual=null;pAtual=null;}
   $("mFechar").addEventListener("click",fecharModal);$("modalBg").addEventListener("click",e=>{if(e.target===$("modalBg"))fecharModal();});
-  function dadosEditados(){const c=mCalc();const vid=$("m_vendedor").value;const nome=teamNome[vid]||CAPS($("m_vendedor").options[$("m_vendedor").selectedIndex].text.replace(" (fora da lista)",""));const fech=$("m_fechamento").value||null;const mesRef=fech?new Date(fech+"T00:00:00"):null;return{numeroPedido:$("m_numero").value.trim(),cliente:$("m_cliente").value.trim(),vendedorId:vid,vendedorNome:nome,dataFechamento:fech,dataRegistro:fech,dataEvento:$("m_evento").value||null,mes:mesRef?MESES[mesRef.getMonth()]:null,modalidade:$("m_modalidade").value,valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,origemMaterial:$("m_origem").value,repasseTerceiro:c.rep,margemWA:c.margem,editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()};}
+  function dadosEditados(){const c=mCalc();const vid=$("m_vendedor").value;const nome=teamNome[vid]||CAPS($("m_vendedor").options[$("m_vendedor").selectedIndex].text.replace(" (fora da lista)",""));const fech=$("m_fechamento").value||null;const mesRef=fech?new Date(fech+"T00:00:00"):null;return{numeroPedido:$("m_numero").value.trim(),cliente:$("m_cliente").value.trim(),vendedorId:vid,vendedorNome:nome,dataFechamento:fech,dataRegistro:fech,dataEvento:$("m_evento").value||null,mes:mesRef?MESES[mesRef.getMonth()]:null,modalidade:$("m_modalidade").value,valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,origemMaterial:$("m_origem").value,canal:$("m_canal").value||null,tipoCliente:$("m_tipoCliente").value||null,repasseTerceiro:c.rep,margemWA:c.margem,editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()};}
   async function aplicar(patch, txtBtn, btn){btn.disabled=true;const orig=btn.textContent;btn.textContent=txtBtn;try{await updateDoc(doc(db,"pedidos",idAtual),patch);fecharModal();jaCarregou=false;if($("view-revisao").style.display!=="none")await carregarRevisao();if($("view-lista").style.display!=="none")await carregarLista();if($("view-devolvidos").style.display!=="none")await carregarDevolvidos();if(perfil.papel==="admin")atualizarContadorRevisao();else atualizarContadorDevolvidos();}catch(e){$("mMsg").className="msg err";$("mMsg").textContent=(e&&e.code&&String(e.code).includes("permission"))?"Sem permissão — publique as regras novas do Firestore.":"Erro ao salvar.";console.error(e);}finally{btn.disabled=false;btn.textContent=orig;}}
   $("mConfirmar").addEventListener("click",()=>aplicar({...dadosEditados(),conferencia:"confirmado",motivoDevolucao:null,confirmadoPor:perfil.uid,confirmadoEm:serverTimestamp()},"Confirmando…",$("mConfirmar")));
   $("mSalvar").addEventListener("click",()=>aplicar({...dadosEditados()},"Salvando…",$("mSalvar")));
@@ -562,7 +571,7 @@
       await addDoc(PEDIDOS,{numeroPedido:contratoPai.numeroPedido,dataEvento:contratoPai.dataEvento||null,dataRegistro:fech,dataFechamento:fech,mes:MESES[mesRef.getMonth()],
         cliente:contratoPai.cliente||"",vendedorId:vend.vendedorId,vendedorNome:vend.nome,
         valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,
-        status:"ativo",tipo:"aditivo",contratoRefId:contratoPai.id,modalidade:$("adModalidade").value,origemMaterial:$("adOrigem").value,
+        status:"ativo",tipo:"aditivo",contratoRefId:contratoPai.id,modalidade:$("adModalidade").value,origemMaterial:$("adOrigem").value,canal:$("adCanal").value||null,tipoCliente:$("adTipoCliente").value||null,
         repasseTerceiro:c.rep,margemWA:c.margem,possivelDuplicado:false,conferencia:conf,motivoDevolucao:null,
         criadoPor:perfil.uid,criadoPorNome:CAPS(perfil.nome),criadoEm:serverTimestamp(),editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()});
       msg.className="msg ok";msg.textContent=conf==="confirmado"?`Aditivo do contrato ${contratoPai.numeroPedido} salvo e confirmado.`:`Aditivo enviado para conferência.`;
