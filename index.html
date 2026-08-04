@@ -237,8 +237,6 @@
             <div class="field" id="adVendField"><label for="adVendedor">Vendedor do aditivo</label><select id="adVendedor"></select></div>
             <div class="field"><label for="adModalidade">Modalidade</label><select id="adModalidade"><option value="retirada">Retirada</option><option value="entrega">Entrega</option></select></div>
             <div class="field"><label for="adOrigem">Origem do material</label><select id="adOrigem"><option value="proprio">Próprio</option><option value="terceiro">Terceiro</option><option value="misto">Misto</option></select></div>
-            <div class="field"><label for="adCanal">Canal de aquisição</label><select id="adCanal"></select></div>
-            <div class="field"><label for="adTipoCliente">Cliente</label><select id="adTipoCliente"><option value="">— selecione —</option><option value="novo">Novo</option><option value="recorrente">Recorrente</option></select></div>
             <div class="field"><label for="adBruto">Valor bruto do acréscimo (R$)</label><input id="adBruto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
             <div class="field"><label for="adDesconto">Desconto (R$) <span class="opt">— opcional</span></label><input id="adDesconto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
             <div class="field"><label for="adFrete">Frete (R$) <span class="opt">— opcional</span></label><input id="adFrete" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
@@ -305,7 +303,7 @@
   const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const CANAIS=[["instagram","Instagram"],["whatsapp","WhatsApp"],["ligacao","Ligação"],["indicacao","Indicação"],["presencial","Presencial"],["facebook","Facebook"],["google","Google"],["trafego_pago","Tráfego pago (anúncio)"],["feiras_eventos","Feiras/eventos"],["parceria","Parceria (decoradora, buffet, etc.)"]];
   const canalLabel=v=>{const c=CANAIS.find(x=>x[0]===v);return c?c[1]:(v||"—");};
-  function fillCanais(){const html='<option value="">— selecione —</option>'+CANAIS.map(([v,l])=>`<option value="${v}">${l}</option>`).join("");["canal","adCanal","m_canal"].forEach(id=>{const el=$(id);if(el)el.innerHTML=html;});}
+  function fillCanais(){const html='<option value="">— selecione —</option>'+CANAIS.map(([v,l])=>`<option value="${v}">${l}</option>`).join("");["canal","m_canal"].forEach(id=>{const el=$(id);if(el)el.innerHTML=html;});}
   const brData=iso=>{if(!iso)return "—";const p=String(iso).slice(0,10).split("-");return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:"—";};
   const hoje=()=>new Date().toISOString().slice(0,10);
   function dataEventoDoNumero(n){const m=String(n).match(/^(\d{2})(\d{2})(\d{2})/);if(!m)return null;const[,yy,mm,dd]=m;const iso=`20${yy}-${mm}-${dd}`;const d=new Date(iso+"T00:00:00");if(isNaN(d))return null;return{iso,br:`${dd}/${mm}/20${yy}`};}
@@ -592,7 +590,7 @@
       await addDoc(PEDIDOS,{numeroPedido:contratoPai.numeroPedido,dataEvento:contratoPai.dataEvento||null,dataRegistro:fech,dataFechamento:fech,mes:MESES[mesRef.getMonth()],
         cliente:contratoPai.cliente||"",vendedorId:vend.vendedorId,vendedorNome:vend.nome,
         valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,
-        status:"ativo",tipo:"aditivo",contratoRefId:contratoPai.id,modalidade:$("adModalidade").value,origemMaterial:$("adOrigem").value,canal:$("adCanal").value||null,tipoCliente:$("adTipoCliente").value||null,
+        status:"ativo",tipo:"aditivo",contratoRefId:contratoPai.id,modalidade:$("adModalidade").value,origemMaterial:$("adOrigem").value,canal:contratoPai.canal||null,tipoCliente:contratoPai.tipoCliente||null,
         repasseTerceiro:c.rep,margemWA:c.margem,possivelDuplicado:false,conferencia:conf,motivoDevolucao:null,
         criadoPor:perfil.uid,criadoPorNome:CAPS(perfil.nome),criadoEm:serverTimestamp(),editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()});
       msg.className="msg ok";msg.textContent=conf==="confirmado"?`Aditivo do contrato ${contratoPai.numeroPedido} salvo e confirmado.`:`Aditivo enviado para conferência.`;
@@ -685,14 +683,16 @@
 
       // ===== MARKETING =====
       // faturamento por canal (só confirmados)
-      const canalAgg={}; conf.forEach(p=>{const k=p.canal||"__nd"; if(!canalAgg[k])canalAgg[k]={liq:0,n:0}; canalAgg[k].liq+=Number(p.valorLiquido)||0; canalAgg[k].n++;});
+      // ===== MARKETING (só contratos originais — aquisição acontece uma vez) =====
+      const confOrig=conf.filter(p=>(p.tipo||"original")==="original");
+      const canalAgg={}; confOrig.forEach(p=>{const k=p.canal||"__nd"; if(!canalAgg[k])canalAgg[k]={liq:0,n:0}; canalAgg[k].liq+=Number(p.valorLiquido)||0; canalAgg[k].n++;});
       const canalArr=Object.entries(canalAgg).map(([k,v])=>({k,label:k==="__nd"?"Não informado":canalLabel(k),...v})).sort((a,b)=>b.liq-a.liq);
       const maxC=Math.max(1,...canalArr.map(c=>c.liq));
       const canalRows = canalArr.length ? canalArr.map(c=>`<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><b>${c.label}</b><span style="color:var(--muted)">${money(c.liq)} • ${c.n} venda(s)</span></div><div style="height:12px;background:#EEECE6;border-radius:99px"><div style="height:100%;width:${Math.round(c.liq/maxC*100)}%;background:${c.k==="__nd"?"#B9B6AE":"var(--brand)"};border-radius:99px"></div></div></div>`).join("") : `<div class="empty">Sem dados de canal ainda.</div>`;
 
       // novos vs recorrentes
       const tc={novo:{n:0,liq:0},recorrente:{n:0,liq:0},__nd:{n:0,liq:0}};
-      conf.forEach(p=>{const k=(p.tipoCliente==="novo"||p.tipoCliente==="recorrente")?p.tipoCliente:"__nd";tc[k].n++;tc[k].liq+=Number(p.valorLiquido)||0;});
+      confOrig.forEach(p=>{const k=(p.tipoCliente==="novo"||p.tipoCliente==="recorrente")?p.tipoCliente:"__nd";tc[k].n++;tc[k].liq+=Number(p.valorLiquido)||0;});
       const totTc=tc.novo.n+tc.recorrente.n+tc.__nd.n;
       const pctNovo=totTc?Math.round(tc.novo.n/totTc*100):0, pctRec=totTc?Math.round(tc.recorrente.n/totTc*100):0, pctNd=totTc?100-pctNovo-pctRec:0;
       const tcRows = totTc ? `<div style="display:flex;height:22px;border-radius:99px;overflow:hidden;border:1px solid var(--line);margin-bottom:12px">
@@ -703,7 +703,7 @@
           ${tc.__nd.n?card("Não informado",tc.__nd.n+` (${pctNd}%)`,money(tc.__nd.liq)):""}</div>` : `<div class="empty">Sem dados de tipo de cliente ainda.</div>`;
 
       // cruzamento canal x novo/recorrente
-      const cruz={}; conf.forEach(p=>{const c=p.canal||"__nd"; if(!cruz[c])cruz[c]={novo:0,rec:0}; if(p.tipoCliente==="novo")cruz[c].novo++; else if(p.tipoCliente==="recorrente")cruz[c].rec++;});
+      const cruz={}; confOrig.forEach(p=>{const c=p.canal||"__nd"; if(!cruz[c])cruz[c]={novo:0,rec:0}; if(p.tipoCliente==="novo")cruz[c].novo++; else if(p.tipoCliente==="recorrente")cruz[c].rec++;});
       const cruzKeys=Object.keys(cruz).filter(c=>cruz[c].novo||cruz[c].rec).sort((a,b)=>(cruz[b].novo+cruz[b].rec)-(cruz[a].novo+cruz[a].rec));
       const cruzRows = cruzKeys.length ? `<table><thead><tr><th>Canal</th><th>Clientes novos</th><th>Recorrentes</th></tr></thead><tbody>${cruzKeys.map(c=>`<tr><td>${c==="__nd"?"Não informado":canalLabel(c)}</td><td>${cruz[c].novo}</td><td>${cruz[c].rec}</td></tr>`).join("")}</tbody></table>` : `<div class="empty">Preencha canal e tipo de cliente nos pedidos para ver este cruzamento.</div>`;
 
