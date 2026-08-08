@@ -189,6 +189,12 @@
       <!-- REVISÃO -->
       <section id="view-revisao" style="display:none"><div class="card">
         <h2>Fila de revisão</h2><p class="hint">Confira as datas e valores já preenchidos e confirme. Só entram nos dashboards depois de confirmados.</p>
+        <div class="filtros">
+          <div class="f busca"><label for="rBusca">Buscar (nº ou cliente)</label><input id="rBusca" placeholder="Digite para buscar…" autocomplete="off"></div>
+          <div class="f"><label for="rVendedor">Vendedor</label><select id="rVendedor"><option value="">Todos</option></select></div>
+          <div class="f"><label for="rMes">Mês</label><select id="rMes"><option value="">Todos</option></select></div>
+        </div>
+        <div class="resumo" id="revResumo"></div>
         <div id="revBox"><div class="empty">Carregando…</div></div>
       </div></section>
 
@@ -462,7 +468,41 @@
 
   async function atualizarContadorRevisao(){try{const s=await getDocs(query(PEDIDOS,where("conferencia","==","pendente")));const n=s.size,c=$("revCount");if(n>0){c.style.display="inline-block";c.textContent=n;}else c.style.display="none";}catch(e){}}
   let pendentesCache={};
-  async function carregarRevisao(){const box=$("revBox");box.innerHTML='<div class="empty">Carregando…</div>';pendentesCache={};try{const s=await getDocs(query(PEDIDOS,where("conferencia","==","pendente")));let arr=[];s.forEach(d=>{pendentesCache[d.id]=d.data();arr.push({id:d.id,...d.data()});});if(!arr.length){box.innerHTML='<div class="empty">Nada pendente. Tudo conferido! ✓</div>';return;}arr.sort((a,b)=>String(a.dataFechamento||a.dataRegistro||"").localeCompare(String(b.dataFechamento||b.dataRegistro||"")));const linhas=arr.map(p=>`<tr><td>${p.numeroPedido||"—"}</td><td>${p.cliente||"—"}</td><td>${CAPS(p.vendedorNome||p.vendedorId||"—")}</td><td class="data">${brData(p.dataFechamento||p.dataRegistro)}</td><td class="data">${brData(p.dataEvento)}</td><td class="money">${money(p.valorLiquido)}</td><td><button class="btn-sm" data-rev="${p.id}">Revisar</button></td></tr>`).join("");box.innerHTML=`<p style="font-size:13px;color:var(--muted);margin:0 0 14px">${arr.length} pedido(s) na fila.</p><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Fechamento</th><th>Evento</th><th>Líquido</th><th></th></tr></thead><tbody>${linhas}</tbody></table>`;box.querySelectorAll("[data-rev]").forEach(b=>b.addEventListener("click",()=>abrirModal(b.dataset.rev,pendentesCache[b.dataset.rev])));}catch(e){box.innerHTML='<div class="empty">Não foi possível carregar a fila.</div>';console.error(e);}}
+  let revArr=[];
+  async function carregarRevisao(){
+    const box=$("revBox");box.innerHTML='<div class="empty">Carregando…</div>';pendentesCache={};revArr=[];
+    try{
+      const s=await getDocs(query(PEDIDOS,where("conferencia","==","pendente")));
+      s.forEach(d=>{pendentesCache[d.id]=d.data();revArr.push({id:d.id,...d.data()});});
+      revArr.sort((a,b)=>String(a.dataFechamento||a.dataRegistro||"").localeCompare(String(b.dataFechamento||b.dataRegistro||"")));
+      // popula filtros a partir da fila
+      const atualV=$("rVendedor").value;
+      const vends=[...new Map(revArr.map(p=>[p.vendedorId,CAPS(p.vendedorNome||p.vendedorId||"—")])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));
+      $("rVendedor").innerHTML='<option value="">Todos</option>'+vends.map(([id,nome])=>`<option value="${id}">${nome}</option>`).join("");$("rVendedor").value=atualV;
+      const atualM=$("rMes").value;
+      const meses=[...new Set(revArr.map(p=>p.mes).filter(Boolean))].sort((a,b)=>MESES.indexOf(a)-MESES.indexOf(b));
+      $("rMes").innerHTML='<option value="">Todos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join("");$("rMes").value=atualM;
+      renderRevisao();
+    }catch(e){box.innerHTML='<div class="empty">Não foi possível carregar a fila.</div>';console.error(e);}
+  }
+  function renderRevisao(){
+    const box=$("revBox");
+    const q=semAcento($("rBusca").value.trim()),vend=$("rVendedor").value,mes=$("rMes").value;
+    const arr=revArr.filter(p=>{
+      if(vend && p.vendedorId!==vend)return false;
+      if(mes && p.mes!==mes)return false;
+      if(q){const alvo=semAcento((p.numeroPedido||"")+" "+(p.cliente||""));if(!alvo.includes(q))return false;}
+      return true;
+    });
+    const totLiq=arr.reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);
+    $("revResumo").innerHTML=`<b>${arr.length}</b> de ${revArr.length} pendente(s) • líquido somado ${money(totLiq)}`;
+    if(!arr.length){box.innerHTML='<div class="empty">'+(revArr.length?"Nenhum pendente com esses filtros.":"Nada pendente. Tudo conferido! ✓")+'</div>';return;}
+    const linhas=arr.map(p=>`<tr><td>${p.numeroPedido||"—"} ${(p.tipo==="aditivo")?'<span class="badge mut">aditivo</span>':''}</td><td>${p.cliente||"—"}</td><td>${CAPS(p.vendedorNome||p.vendedorId||"—")}</td><td class="data">${brData(p.dataFechamento||p.dataRegistro)}</td><td class="data">${brData(p.dataEvento)}</td><td class="money">${money(p.valorLiquido)}</td><td><button class="btn-sm" data-rev="${p.id}">Revisar</button></td></tr>`).join("");
+    box.innerHTML=`<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Fechamento</th><th>Evento</th><th>Líquido</th><th></th></tr></thead><tbody>${linhas}</tbody></table>`;
+    box.querySelectorAll("[data-rev]").forEach(b=>b.addEventListener("click",()=>abrirModal(b.dataset.rev,pendentesCache[b.dataset.rev])));
+  }
+  $("rBusca").addEventListener("input",renderRevisao);
+  ["rVendedor","rMes"].forEach(id=>$(id).addEventListener("change",renderRevisao));
 
   // ===== Modal (revisão + edição) =====
   let idAtual=null, pAtual=null, travado=false;
