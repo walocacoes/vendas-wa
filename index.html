@@ -163,10 +163,10 @@
           <div class="field"><label for="origem">Origem do material</label><select id="origem"><option value="proprio">Próprio</option><option value="terceiro">Terceiro</option><option value="misto">Misto</option></select></div>
           <div class="field"><label for="canal">Canal de aquisição <span class="opt">— por onde veio</span></label><select id="canal"></select></div>
           <div class="field"><label for="tipoCliente">Cliente</label><select id="tipoCliente"><option value="">— selecione —</option><option value="novo">Novo</option><option value="recorrente">Recorrente</option></select></div>
-          <div class="field"><label for="bruto">Valor bruto (R$)</label><input id="bruto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
-          <div class="field"><label for="desconto">Desconto (R$) <span class="opt">— opcional</span></label><input id="desconto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
-          <div class="field"><label for="frete">Frete (R$) <span class="opt">— opcional</span></label><input id="frete" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
-          <div class="field full" id="repasseWrap" style="display:none"><label for="repasse">Repasse ao terceiro (R$) <span class="opt">— quanto vai pro parceiro</span></label><input id="repasse" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
+          <div class="field"><label for="bruto">Valor bruto (R$)</label><input id="bruto" type="text" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field"><label for="desconto">Desconto (R$) <span class="opt">— opcional</span></label><input id="desconto" type="text" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field"><label for="frete">Frete (R$) <span class="opt">— opcional</span></label><input id="frete" type="text" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field full" id="repasseWrap" style="display:none"><label for="repasse">Repasse ao terceiro (R$) <span class="opt">— quanto vai pro parceiro</span></label><input id="repasse" type="text" inputmode="decimal" placeholder="0,00"></div>
           <div class="calc"><div><div class="lbl">Valor líquido</div><div class="val" id="liquidoOut">R$ 0,00</div></div><div><div class="lbl">Margem WA</div><div class="val" id="margemOut">R$ 0,00</div></div></div>
           <div class="alert" id="dupAlert"><span>&#9888;&#65039;</span><span id="dupText"></span></div>
         </div>
@@ -244,10 +244,10 @@
             <div class="field" id="adVendField"><label for="adVendedor">Vendedor do aditivo</label><select id="adVendedor"></select></div>
             <div class="field"><label for="adModalidade">Modalidade</label><select id="adModalidade"><option value="retirada">Retirada</option><option value="entrega">Entrega</option></select></div>
             <div class="field"><label for="adOrigem">Origem do material</label><select id="adOrigem"><option value="proprio">Próprio</option><option value="terceiro">Terceiro</option><option value="misto">Misto</option></select></div>
-            <div class="field"><label for="adBruto">Valor bruto do acréscimo (R$)</label><input id="adBruto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
-            <div class="field"><label for="adDesconto">Desconto (R$) <span class="opt">— opcional</span></label><input id="adDesconto" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
-            <div class="field"><label for="adFrete">Frete (R$) <span class="opt">— opcional</span></label><input id="adFrete" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
-            <div class="field full" id="adRepasseWrap" style="display:none"><label for="adRepasse">Repasse ao terceiro (R$)</label><input id="adRepasse" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal"></div>
+            <div class="field"><label for="adBruto">Valor bruto do acréscimo (R$)</label><input id="adBruto" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="field"><label for="adDesconto">Desconto (R$) <span class="opt">— opcional</span></label><input id="adDesconto" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="field"><label for="adFrete">Frete (R$) <span class="opt">— opcional</span></label><input id="adFrete" type="text" inputmode="decimal" placeholder="0,00"></div>
+            <div class="field full" id="adRepasseWrap" style="display:none"><label for="adRepasse">Repasse ao terceiro (R$)</label><input id="adRepasse" type="text" inputmode="decimal" placeholder="0,00"></div>
             <div class="calc"><div><div class="lbl">Líquido do aditivo</div><div class="val" id="adLiquido">R$ 0,00</div></div><div><div class="lbl">Margem WA</div><div class="val" id="adMargem">R$ 0,00</div></div></div>
           </div>
           <div class="actions"><button class="primary" id="adSalvar">Salvar aditivo</button><button class="ghost" id="adCancelar">Trocar de contrato</button><span class="msg" id="adFormMsg"></span></div>
@@ -269,13 +269,13 @@
       <div class="field"><label>Data do evento <span class="opt">— do nº do pedido</span></label><input id="m_evento" type="date"></div>
       <div class="field"><label>Vendedor</label><select id="m_vendedor"></select></div>
       <div class="field"><label>Modalidade</label><select id="m_modalidade"><option value="retirada">Retirada</option><option value="entrega">Entrega</option></select></div>
-      <div class="field"><label>Valor bruto (R$)</label><input id="m_bruto" type="number" step="0.01"></div>
-      <div class="field"><label>Desconto (R$)</label><input id="m_desconto" type="number" step="0.01"></div>
-      <div class="field"><label>Frete (R$)</label><input id="m_frete" type="number" step="0.01"></div>
+      <div class="field"><label>Valor bruto (R$)</label><input id="m_bruto" type="text" inputmode="decimal"></div>
+      <div class="field"><label>Desconto (R$)</label><input id="m_desconto" type="text" inputmode="decimal"></div>
+      <div class="field"><label>Frete (R$)</label><input id="m_frete" type="text" inputmode="decimal"></div>
       <div class="field"><label>Origem</label><select id="m_origem"><option value="proprio">Próprio</option><option value="terceiro">Terceiro</option><option value="misto">Misto</option></select></div>
       <div class="field"><label>Canal de aquisição</label><select id="m_canal"></select></div>
       <div class="field"><label>Cliente</label><select id="m_tipoCliente"><option value="">— selecione —</option><option value="novo">Novo</option><option value="recorrente">Recorrente</option></select></div>
-      <div class="field full"><label>Repasse ao terceiro (R$)</label><input id="m_repasse" type="number" step="0.01"></div>
+      <div class="field full"><label>Repasse ao terceiro (R$)</label><input id="m_repasse" type="text" inputmode="decimal"></div>
       <div class="calc"><div><div class="lbl">Valor líquido</div><div class="val" id="m_liquido">R$ 0,00</div></div><div><div class="lbl">Margem WA</div><div class="val" id="m_margem">R$ 0,00</div></div></div>
       <div class="rastro" id="m_rastro"></div>
     </div>
@@ -305,6 +305,10 @@
 
   const $=id=>document.getElementById(id);
   const money=n=>"R$ "+(Number(n)||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+  function parseBR(s){s=(s||"").toString().trim();if(s==="")return 0;if(s.indexOf(",")>-1)s=s.replace(/\./g,"").replace(",",".");const n=parseFloat(s.replace(/[^0-9.\-]/g,""));return isNaN(n)?0:n;}
+  function fmtBR(n){return (Number(n)||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function wireMoeda(ids){ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.addEventListener("blur",()=>{if(el.value.trim()==="")return;el.value=fmtBR(parseBR(el.value));});el.addEventListener("focus",()=>{if(el.value.trim()==="")return;const v=parseBR(el.value);el.value=Number.isInteger(v)?String(v):String(v).replace(".",",");});});}
+  wireMoeda(["bruto","desconto","frete","repasse","adBruto","adDesconto","adFrete","adRepasse","m_bruto","m_desconto","m_frete","m_repasse"]);
   const CAPS=s=>(s||"").toLocaleUpperCase("pt-BR");
   const slug=s=>(s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
   const semAcento=s=>(s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -406,7 +410,7 @@
   $("eqNome").addEventListener("input",()=>{$("eqMsg").textContent="";});
   $("eqAdd").addEventListener("click",async()=>{await addVendedor($("eqNome").value,false);await carregarEquipe();await configurarVendedor();});
 
-  function calcular(){const b=parseFloat($("bruto").value)||0,d=parseFloat($("desconto").value)||0,f=parseFloat($("frete").value)||0,r=parseFloat($("repasse").value)||0;const liq=b-d+f,mar=liq-r;$("liquidoOut").textContent=money(liq);$("margemOut").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
+  function calcular(){const b=parseBR($("bruto").value)||0,d=parseBR($("desconto").value)||0,f=parseBR($("frete").value)||0,r=parseBR($("repasse").value)||0;const liq=b-d+f,mar=liq-r;$("liquidoOut").textContent=money(liq);$("margemOut").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
   ["bruto","desconto","frete","repasse"].forEach(id=>$(id).addEventListener("input",calcular));
   $("origem").addEventListener("change",e=>{const m=e.target.value!=="proprio";$("repasseWrap").style.display=m?"flex":"none";if(!m){$("repasse").value="";calcular();}});
   $("numero").addEventListener("input",()=>{const de=dataEventoDoNumero($("numero").value.trim());$("eventoOut").textContent=de?`Evento em ${de.br}`:"";});
@@ -511,7 +515,7 @@
 
   // ===== Modal (revisão + edição) =====
   let idAtual=null, pAtual=null, travado=false;
-  function mCalc(){const b=parseFloat($("m_bruto").value)||0,d=parseFloat($("m_desconto").value)||0,f=parseFloat($("m_frete").value)||0,r=parseFloat($("m_repasse").value)||0;const liq=b-d+f,mar=liq-r;$("m_liquido").textContent=money(liq);$("m_margem").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
+  function mCalc(){const b=parseBR($("m_bruto").value)||0,d=parseBR($("m_desconto").value)||0,f=parseBR($("m_frete").value)||0,r=parseBR($("m_repasse").value)||0;const liq=b-d+f,mar=liq-r;$("m_liquido").textContent=money(liq);$("m_margem").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
   ["m_bruto","m_desconto","m_frete","m_repasse"].forEach(id=>$(id).addEventListener("input",mCalc));
   const CAMPOS=["m_numero","m_cliente","m_fechamento","m_evento","m_vendedor","m_modalidade","m_bruto","m_desconto","m_frete","m_origem","m_repasse"];
   function setTravado(v){travado=v;CAMPOS.forEach(id=>$(id).disabled=v);}
@@ -520,7 +524,7 @@
     $("mSub").textContent=`${p.tipo==="aditivo"?"ADITIVO • ":""}Nº ${p.numeroPedido||"—"} • ${badge(conf).replace(/<[^>]+>/g,"").trim()} • lançado por ${CAPS(p.vendedorNome||p.vendedorId||"—")}`;
     $("m_numero").value=p.numeroPedido||"";$("m_cliente").value=p.cliente||"";$("m_documento").value=p.documento?formatDoc(p.documento):"";$("m_fechamento").value=(p.dataFechamento||p.dataRegistro||"").slice(0,10);$("m_evento").value=(p.dataEvento||"").slice(0,10);
     let ops=opcoesVendedor(p.vendedorId);if(p.vendedorId&&!equipe.some(v=>v.vendedorId===p.vendedorId))ops=`<option value="${p.vendedorId}" selected>${CAPS(p.vendedorNome||p.vendedorId)} (fora da lista)</option>`+ops;$("m_vendedor").innerHTML=ops;
-    $("m_modalidade").value=p.modalidade||"retirada";$("m_bruto").value=p.valorBruto??"";$("m_desconto").value=p.desconto??0;$("m_frete").value=p.frete??0;$("m_origem").value=p.origemMaterial||"proprio";$("m_canal").value=p.canal||"";$("m_tipoCliente").value=p.tipoCliente||"";$("m_repasse").value=p.repasseTerceiro??0;
+    $("m_modalidade").value=p.modalidade||"retirada";$("m_bruto").value=p.valorBruto!=null?fmtBR(p.valorBruto):"";$("m_desconto").value=fmtBR(p.desconto||0);$("m_frete").value=fmtBR(p.frete||0);$("m_origem").value=p.origemMaterial||"proprio";$("m_canal").value=p.canal||"";$("m_tipoCliente").value=p.tipoCliente||"";$("m_repasse").value=fmtBR(p.repasseTerceiro||0);
     const ed=tsBr(p.editadoEm),cr=tsBr(p.criadoEm);$("m_rastro").innerHTML=(ed?`Última alteração por <b>${CAPS(p.editadoPorNome||"—")}</b> em ${ed}.`:"")+(cr?`<br>Lançado por <b>${CAPS(p.criadoPorNome||"—")}</b> em ${cr}.`:"")+(p.origem==="importacao"?"<br>Origem: importação da planilha.":"");
     $("m_motivo").value="";$("devbox").classList.remove("show");$("mMsg").textContent="";mCalc();
     // banner do motivo (quando devolvido)
@@ -618,7 +622,7 @@
     $("adBusca").style.display="none";$("adForm").style.display="block";
   }
   $("adCancelar").addEventListener("click",resetAditivo);
-  function adCalc(){const b=parseFloat($("adBruto").value)||0,d=parseFloat($("adDesconto").value)||0,f=parseFloat($("adFrete").value)||0,r=parseFloat($("adRepasse").value)||0;const liq=b-d+f,mar=liq-r;$("adLiquido").textContent=money(liq);$("adMargem").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
+  function adCalc(){const b=parseBR($("adBruto").value)||0,d=parseBR($("adDesconto").value)||0,f=parseBR($("adFrete").value)||0,r=parseBR($("adRepasse").value)||0;const liq=b-d+f,mar=liq-r;$("adLiquido").textContent=money(liq);$("adMargem").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
   ["adBruto","adDesconto","adFrete","adRepasse"].forEach(id=>$(id).addEventListener("input",adCalc));
   $("adOrigem").addEventListener("change",e=>{const m=e.target.value!=="proprio";$("adRepasseWrap").style.display=m?"flex":"none";if(!m){$("adRepasse").value="";adCalc();}});
   function adVendedorEscolhido(){const s=document.getElementById("adVendedor");if(!s)return{vendedorId:perfil.vendedorId,nome:CAPS(perfil.nome)};return{vendedorId:s.value,nome:teamNome[s.value]||CAPS(s.options[s.selectedIndex].text)};}
