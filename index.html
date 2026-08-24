@@ -181,6 +181,7 @@
           <div class="f"><label for="fSituacao">Situação</label><select id="fSituacao"><option value="">Todas</option><option value="pendente">Pendente</option><option value="confirmado">Confirmado</option><option value="devolvido">Devolvido</option></select></div>
           <div class="f"><label for="fVendedor">Vendedor</label><select id="fVendedor"><option value="">Todos</option></select></div>
           <div class="f"><label for="fMes">Mês</label><select id="fMes"><option value="">Todos</option></select></div>
+          <div class="f"><label for="fTipo">Tipo</label><select id="fTipo"><option value="">Todos</option><option value="original">Contratos</option><option value="aditivo">Aditivos</option></select></div>
         </div>
         <div class="resumo" id="listaResumo"></div>
         <div id="listaBox"><div class="empty">Carregando…</div></div>
@@ -194,6 +195,7 @@
           <div class="f busca"><label for="rBusca">Buscar (nº ou cliente)</label><input id="rBusca" placeholder="Digite para buscar…" autocomplete="off"></div>
           <div class="f"><label for="rVendedor">Vendedor</label><select id="rVendedor"><option value="">Todos</option></select></div>
           <div class="f"><label for="rMes">Mês</label><select id="rMes"><option value="">Todos</option></select></div>
+          <div class="f"><label for="rTipo">Tipo</label><select id="rTipo"><option value="">Todos</option><option value="original">Contratos</option><option value="aditivo">Aditivos</option></select></div>
         </div>
         <div class="resumo" id="revResumo"></div>
         <div id="revBox"><div class="empty">Carregando…</div></div>
@@ -445,11 +447,12 @@
     renderLista();
   }
   function filtrar(){
-    const q=semAcento($("fBusca").value.trim());const sit=$("fSituacao").value,vend=$("fVendedor").value,mes=$("fMes").value;
+    const q=semAcento($("fBusca").value.trim());const sit=$("fSituacao").value,vend=$("fVendedor").value,mes=$("fMes").value,tipo=$("fTipo").value;
     return todosPedidos.filter(p=>{
       if(sit && (p.conferencia||"pendente")!==sit) return false;
       if(vend && p.vendedorId!==vend) return false;
       if(mes && p.mes!==mes) return false;
+      if(tipo && (p.tipo||"original")!==tipo) return false;
       if(q){const alvo=semAcento((p.numeroPedido||"")+" "+(p.cliente||""));const qd=q.replace(/\D/g,"");const okDoc=qd&&(p.documento||"").includes(qd);if(!alvo.includes(q)&&!okDoc)return false;}
       return true;
     });
@@ -473,7 +476,7 @@
     if($("pgNext"))$("pgNext").addEventListener("click",()=>{pagina++;renderLista();window.scrollTo(0,0);});
   }
   ["fBusca"].forEach(id=>$(id).addEventListener("input",()=>{pagina=1;renderLista();}));
-  ["fSituacao","fVendedor","fMes"].forEach(id=>$(id).addEventListener("change",()=>{pagina=1;renderLista();}));
+  ["fSituacao","fVendedor","fMes","fTipo"].forEach(id=>$(id).addEventListener("change",()=>{pagina=1;renderLista();}));
 
   async function atualizarContadorRevisao(){try{const s=await getDocs(query(PEDIDOS,where("conferencia","==","pendente")));const n=s.size,c=$("revCount");if(n>0){c.style.display="inline-block";c.textContent=n;}else c.style.display="none";}catch(e){}}
   let pendentesCache={};
@@ -496,10 +499,11 @@
   }
   function renderRevisao(){
     const box=$("revBox");
-    const q=semAcento($("rBusca").value.trim()),vend=$("rVendedor").value,mes=$("rMes").value;
+    const q=semAcento($("rBusca").value.trim()),vend=$("rVendedor").value,mes=$("rMes").value,tipo=$("rTipo").value;
     const arr=revArr.filter(p=>{
       if(vend && p.vendedorId!==vend)return false;
       if(mes && p.mes!==mes)return false;
+      if(tipo && (p.tipo||"original")!==tipo)return false;
       if(q){const alvo=semAcento((p.numeroPedido||"")+" "+(p.cliente||""));const qd=q.replace(/\D/g,"");const okDoc=qd&&(p.documento||"").includes(qd);if(!alvo.includes(q)&&!okDoc)return false;}
       return true;
     });
@@ -511,7 +515,7 @@
     box.querySelectorAll("[data-rev]").forEach(b=>b.addEventListener("click",()=>abrirModal(b.dataset.rev,pendentesCache[b.dataset.rev])));
   }
   $("rBusca").addEventListener("input",renderRevisao);
-  ["rVendedor","rMes"].forEach(id=>$(id).addEventListener("change",renderRevisao));
+  ["rVendedor","rMes","rTipo"].forEach(id=>$(id).addEventListener("change",renderRevisao));
 
   // ===== Modal (revisão + edição) =====
   let idAtual=null, pAtual=null, travado=false;
