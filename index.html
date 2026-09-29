@@ -105,8 +105,7 @@
   @media print{
     @page{margin:12mm}
     body{background:#fff}
-    .topbar,.tabs,.connrow,#login,.no-print{display:none !important}
-    #view-novo,#view-lista,#view-revisao,#view-equipe,#view-devolvidos,#view-aditivo{display:none !important}
+    .topbar,.tabs,.connrow,#login,.no-print,.filtros,.paginacao,.btn-sm,.revChk,#revChkAll{display:none !important}
     #app{display:block !important}
     .wrap{max-width:none;padding:0}
     .card{box-shadow:none;border:none;padding:0}
@@ -175,7 +174,8 @@
 
       <!-- LISTA -->
       <section id="view-lista" style="display:none"><div class="card">
-        <h2>Pedidos lançados</h2><p class="hint">Busque, filtre e clique em um pedido para ver ou editar.</p>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h2>Pedidos lançados</h2><p class="hint" style="margin-bottom:0">Busque, filtre e clique em um pedido para ver ou editar.</p></div><button class="btn-sm no-print" id="btnPdfLista">Salvar PDF</button></div>
+        <div style="height:14px"></div>
         <div class="filtros">
           <div class="f busca"><label for="fBusca">Buscar (nº ou cliente)</label><input id="fBusca" placeholder="Digite para buscar…" autocomplete="off"></div>
           <div class="f"><label for="fSituacao">Situação</label><select id="fSituacao"><option value="">Todas</option><option value="pendente">Pendente</option><option value="confirmado">Confirmado</option><option value="devolvido">Devolvido</option></select></div>
@@ -214,6 +214,10 @@
       <!-- PAINÉIS -->
       <section id="view-dashboard" style="display:none"><div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h2>Painéis</h2><p class="hint" style="margin-bottom:0">Contam apenas pedidos <b>confirmados</b>. Sobem conforme você aprova os pendentes.</p></div><button class="btn-sm no-print" id="btnPdf">Salvar PDF</button></div>
+        <div class="filtros" style="margin-top:16px">
+          <div class="f"><label for="dashMes">Mês</label><select id="dashMes"><option value="">Ano todo</option></select></div>
+          <div class="f"><label for="dashVend">Vendedor</label><select id="dashVend"><option value="">Todos</option></select></div>
+        </div>
         <div style="height:14px"></div>
         <div id="dashBox"><div class="empty">Carregando…</div></div>
       </div></section>
@@ -430,7 +434,7 @@
   tabs.forEach(t=>t.addEventListener("click",()=>{tabs.forEach(x=>x.classList.remove("active"));t.classList.add("active");const v=t.dataset.view;$("view-novo").style.display=v==="novo"?"block":"none";$("view-lista").style.display=v==="lista"?"block":"none";$("view-revisao").style.display=v==="revisao"?"block":"none";$("view-equipe").style.display=v==="equipe"?"block":"none";$("view-dashboard").style.display=v==="dashboard"?"block":"none";$("view-devolvidos").style.display=v==="devolvidos"?"block":"none";$("view-aditivo").style.display=v==="aditivo"?"block":"none";if(v==="lista")carregarLista();if(v==="revisao")carregarRevisao();if(v==="equipe")renderEquipe();if(v==="dashboard")renderDashboard();if(v==="devolvidos")carregarDevolvidos();if(v==="aditivo")resetAditivo();}));
 
   // ===== LISTA com filtros/busca/paginação =====
-  let todosPedidos=[]; let pagina=1; const POR_PAGINA=40; let jaCarregou=false;
+  let todosPedidos=[]; let pagina=1; const POR_PAGINA=40; let jaCarregou=false; let imprimindoTudo=false;
   function ordenarDesc(arr){return arr.sort((a,b)=>{const da=String(a.dataFechamento||a.dataRegistro||""),dbb=String(b.dataFechamento||b.dataRegistro||"");if(da!==dbb)return dbb.localeCompare(da);const ta=a.criadoEm&&a.criadoEm.seconds?a.criadoEm.seconds:0,tb=b.criadoEm&&b.criadoEm.seconds?b.criadoEm.seconds:0;return tb-ta;});}
   async function carregarLista(){
     const box=$("listaBox");
@@ -463,7 +467,7 @@
     $("listaResumo").innerHTML=`<b>${total}</b> pedido(s) • líquido somado ${money(totLiq)}`;
     if(!total){box.innerHTML='<div class="empty">Nenhum pedido encontrado com esses filtros.</div>';$("paginacao").innerHTML="";return;}
     const maxPag=Math.ceil(total/POR_PAGINA);if(pagina>maxPag)pagina=maxPag;if(pagina<1)pagina=1;
-    const ini=(pagina-1)*POR_PAGINA;const pageArr=arr.slice(ini,ini+POR_PAGINA);
+    const ini=(pagina-1)*POR_PAGINA;const pageArr=imprimindoTudo?arr:arr.slice(ini,ini+POR_PAGINA);
     const linhas=pageArr.map(p=>`<tr>
       <td>${p.numeroPedido||"—"} ${(p.tipo==="aditivo")?'<span class="badge mut">aditivo</span>':''}</td><td>${p.cliente||"—"}${celDoc(p)}</td><td>${CAPS(p.vendedorNome||p.vendedorId||"—")}</td>
       <td class="data">${brData(p.dataFechamento||p.dataRegistro)}</td><td class="data">${brData(p.dataEvento)}</td>
@@ -476,6 +480,16 @@
     if($("pgNext"))$("pgNext").addEventListener("click",()=>{pagina++;renderLista();window.scrollTo(0,0);});
   }
   ["fBusca"].forEach(id=>$(id).addEventListener("input",()=>{pagina=1;renderLista();}));
+  const btnPdfLista=$("btnPdfLista");
+  if(btnPdfLista) btnPdfLista.addEventListener("click",()=>{
+    let extra=[];
+    if($("fSituacao").value)extra.push($("fSituacao").options[$("fSituacao").selectedIndex].text);
+    if($("fVendedor").value)extra.push(teamNome[$("fVendedor").value]||$("fVendedor").value);
+    if($("fMes").value)extra.push($("fMes").value);
+    if($("fTipo").value)extra.push($("fTipo").options[$("fTipo").selectedIndex].text);
+    $("phData").textContent="WA Locações & Eventos  •  Pedidos"+(extra.length?"  •  "+extra.join("  •  "):"")+"  •  "+new Date().toLocaleDateString("pt-BR");
+    imprimindoTudo=true; renderLista(); window.print(); imprimindoTudo=false; renderLista();
+  });
   ["fSituacao","fVendedor","fMes","fTipo"].forEach(id=>$(id).addEventListener("change",()=>{pagina=1;renderLista();}));
 
   async function atualizarContadorRevisao(){try{const s=await getDocs(query(PEDIDOS,where("conferencia","==","pendente")));const n=s.size,c=$("revCount");if(n>0){c.style.display="inline-block";c.textContent=n;}else c.style.display="none";}catch(e){}}
@@ -702,11 +716,26 @@
 
   // ===== PAINÉIS =====
   const btnPdf=$("btnPdf");
-  if(btnPdf) btnPdf.addEventListener("click",()=>{ $("phData").textContent="WA Locações & Eventos  •  "+new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}); window.print(); });
+  if(btnPdf) btnPdf.addEventListener("click",()=>{
+    let extra="";
+    const fm=$("dashMes")?$("dashMes").value:"", fv=$("dashVend")?$("dashVend").value:"";
+    if(fm)extra+="  •  "+fm;
+    if(fv){const nm=teamNome[fv]||fv;extra+="  •  "+nm;}
+    $("phData").textContent="WA Locações & Eventos  •  "+new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})+extra;
+    window.print();
+  });
+  ["dashMes","dashVend"].forEach(id=>{const el=$(id);if(el)el.addEventListener("change",renderDashboard);});
   async function renderDashboard(){
     const box=$("dashBox"); box.innerHTML='<div class="empty">Calculando…</div>';
     try{
       let all=[]; (await getDocs(PEDIDOS)).forEach(d=>all.push(d.data()));
+      // filtros do painel (mês e vendedor), preservando a seleção
+      const mesesData=[...new Set(all.map(p=>p.mes).filter(Boolean))].sort((a,b)=>MESES.indexOf(a)-MESES.indexOf(b));
+      const selM=$("dashMes").value;$("dashMes").innerHTML='<option value="">Ano todo</option>'+mesesData.map(m=>`<option value="${m}">${m}</option>`).join("");$("dashMes").value=selM;
+      const vendsData=[...new Map(all.map(p=>[p.vendedorId,CAPS(p.vendedorNome||p.vendedorId||"—")])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));
+      const selV=$("dashVend").value;$("dashVend").innerHTML='<option value="">Todos</option>'+vendsData.map(([id,n])=>`<option value="${id}">${n}</option>`).join("");$("dashVend").value=selV;
+      const fMes=$("dashMes").value,fVend=$("dashVend").value;
+      if(fMes||fVend) all=all.filter(p=>(!fMes||p.mes===fMes)&&(!fVend||p.vendedorId===fVend));
       const conf=all.filter(p=>(p.conferencia||"pendente")==="confirmado");
       const total=all.length;
       const nConf=conf.length;
@@ -744,9 +773,10 @@
         ${card("Contratos",contratosYTD)}
         ${card("Ticket médio",money(ticket))}</div>`;
 
-      // realizado vs meta por mês
-      const maxVal=Math.max(1,...MESES.map(m=>Math.max(Number(metas[m])||0, realMes[m]||0)));
-      const mesesRows=MESES.map(m=>{
+      // realizado vs meta por mês (só o mês filtrado, se houver)
+      const mesesShow = fMes ? [fMes] : MESES;
+      const maxVal=Math.max(1,...mesesShow.map(m=>Math.max(Number(metas[m])||0, realMes[m]||0)));
+      const mesesRows=mesesShow.map(m=>{
         const meta=Number(metas[m])||0, real=realMes[m]||0;
         if(meta===0&&real===0)return "";
         const pct=meta?real/meta:0;
