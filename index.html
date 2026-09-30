@@ -439,9 +439,11 @@
   async function carregarLista(){
     const box=$("listaBox");
     box.innerHTML='<div class="empty">Carregando…</div>';
-    try{todosPedidos=[];(await getDocs(PEDIDOS)).forEach(d=>todosPedidos.push({id:d.id,...d.data()}));
-      if(perfil.papel!=="admin") todosPedidos=todosPedidos.filter(p=>p.vendedorId===perfil.vendedorId||p.criadoPor===perfil.uid);
-      todosPedidos=ordenarDesc(todosPedidos);jaCarregou=true;
+    try{
+      const mapa=new Map();(await getDocs(PEDIDOS)).forEach(d=>mapa.set(d.id,{id:d.id,...d.data()}));
+      let novos=[...mapa.values()];
+      if(perfil.papel!=="admin") novos=novos.filter(p=>p.vendedorId===perfil.vendedorId||p.criadoPor===perfil.uid);
+      todosPedidos=ordenarDesc(novos);jaCarregou=true;
       // popula meses presentes (mantém o mês selecionado)
       const mesSel=$("fMes").value;
       const meses=[...new Set(todosPedidos.map(p=>p.mes).filter(Boolean))].sort((a,b)=>MESES.indexOf(a)-MESES.indexOf(b));
@@ -501,10 +503,11 @@
   let pendentesCache={};
   let revArr=[];
   async function carregarRevisao(){
-    const box=$("revBox");box.innerHTML='<div class="empty">Carregando…</div>';pendentesCache={};revArr=[];
+    const box=$("revBox");box.innerHTML='<div class="empty">Carregando…</div>';
     try{
-      const s=await getDocs(query(PEDIDOS,where("conferencia","==","pendente")));
-      s.forEach(d=>{pendentesCache[d.id]=d.data();revArr.push({id:d.id,...d.data()});});
+      const cache={},mapa=new Map();
+      (await getDocs(query(PEDIDOS,where("conferencia","==","pendente")))).forEach(d=>{cache[d.id]=d.data();mapa.set(d.id,{id:d.id,...d.data()});});
+      pendentesCache=cache;revArr=[...mapa.values()];
       revArr.sort((a,b)=>String(a.dataFechamento||a.dataRegistro||"").localeCompare(String(b.dataFechamento||b.dataRegistro||"")));
       // popula filtros a partir da fila
       const atualV=$("rVendedor").value;
