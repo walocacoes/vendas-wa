@@ -463,11 +463,16 @@
   }
   function renderLista(){
     const box=$("listaBox");const arr=filtrar();
-    const total=arr.length;const totLiq=arr.reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);
-    $("listaResumo").innerHTML=`<b>${total}</b> pedido(s) • líquido somado ${money(totLiq)}`;
+    const total=arr.length;
+    const validos=arr.filter(p=>p.conferencia!=="devolvido");
+    const totLiq=validos.reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);
+    const devs=arr.filter(p=>p.conferencia==="devolvido");
+    const totDev=devs.reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);
+    $("listaResumo").innerHTML=`<b>${total}</b> pedido(s) • líquido somado ${money(totLiq)}<span style="color:var(--muted)"> (sem devolvidos)</span>`+(devs.length?` • ${devs.length} devolvido(s) fora da soma (${money(totDev)})`:"");
     if(!total){box.innerHTML='<div class="empty">Nenhum pedido encontrado com esses filtros.</div>';$("paginacao").innerHTML="";return;}
     const maxPag=Math.ceil(total/POR_PAGINA);if(pagina>maxPag)pagina=maxPag;if(pagina<1)pagina=1;
-    const ini=(pagina-1)*POR_PAGINA;const pageArr=imprimindoTudo?arr:arr.slice(ini,ini+POR_PAGINA);
+    const ini=(pagina-1)*POR_PAGINA;
+    const pageArr=imprimindoTudo?[...arr].sort((a,b)=>String(a.dataFechamento||a.dataRegistro||"").localeCompare(String(b.dataFechamento||b.dataRegistro||""))):arr.slice(ini,ini+POR_PAGINA);
     const linhas=pageArr.map(p=>`<tr>
       <td>${p.numeroPedido||"—"} ${(p.tipo==="aditivo")?'<span class="badge mut">aditivo</span>':''}</td><td>${p.cliente||"—"}${celDoc(p)}</td><td>${CAPS(p.vendedorNome||p.vendedorId||"—")}</td>
       <td class="data">${brData(p.dataFechamento||p.dataRegistro)}</td><td class="data">${brData(p.dataEvento)}</td>
