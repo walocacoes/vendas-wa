@@ -818,6 +818,26 @@
       // margem por origem
       const orgRows = Object.keys(org).length ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">${Object.entries(org).map(([o,v])=>card("Margem — "+(origemLabels[o]||o),money(v))).join("")}</div>` : `<div class="empty">—</div>`;
 
+      // entrega x retirada (logística)
+      const modo={entrega:{n:0,liq:0},retirada:{n:0,liq:0},__nd:{n:0,liq:0}};
+      conf.forEach(p=>{const k=(p.modalidade==="entrega"||p.modalidade==="retirada")?p.modalidade:"__nd";modo[k].n++;modo[k].liq+=Number(p.valorLiquido)||0;});
+      const totMod=modo.entrega.n+modo.retirada.n+modo.__nd.n;
+      const pEnt=totMod?Math.round(modo.entrega.n/totMod*100):0,pRet=totMod?Math.round(modo.retirada.n/totMod*100):0,pNdM=totMod?100-pEnt-pRet:0;
+      const modRows = totMod ? `<div style="display:flex;height:22px;border-radius:99px;overflow:hidden;border:1px solid var(--line);margin-bottom:12px">
+          <div style="width:${pEnt}%;background:var(--brand)"></div><div style="width:${pRet}%;background:#2A2830"></div><div style="width:${pNdM}%;background:#D8D5CD"></div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+          ${card("Entregas",modo.entrega.n+` (${pEnt}%)`,money(modo.entrega.liq))}
+          ${card("Retiradas",modo.retirada.n+` (${pRet}%)`,money(modo.retirada.liq))}
+          ${modo.__nd.n?card("Não informado",modo.__nd.n+` (${pNdM}%)`,money(modo.__nd.liq)):""}</div>` : `<div class="empty">Sem dados de modalidade ainda.</div>`;
+
+      // composição da receita: locação x frete (frete não leva desconto)
+      let freteTot=0; conf.forEach(p=>{const liq=Number(p.valorLiquido)||0,fr=Number(p.frete)||0;freteTot+=Math.min(fr,liq);});
+      const locacaoTot=realizadoYTD-freteTot;
+      const receitaRows=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+        ${card("Locação",money(locacaoTot),"itens, já com desconto")}
+        ${card("Frete",money(freteTot),"entregas cobradas")}
+        ${card("Total (líquido)",money(realizadoYTD))}</div>`;
+
       const aviso = nConf===0 ? `<div style="background:var(--warn-soft);border:1px solid #EAD9AE;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--warn);margin-bottom:6px">Nenhum pedido confirmado ainda — os painéis estão zerados de propósito. Vá na aba <b>Revisão</b> confirmando pedidos e volte aqui: os números sobem na hora.</div>` : "";
 
       // ===== MARKETING =====
@@ -850,7 +870,7 @@
         + secTitle("Clientes novos × recorrentes") + tcRows
         + secTitle("Cruzamento: canal × tipo de cliente") + `<p style="font-size:12px;color:var(--muted);margin:-6px 0 12px">Quem traz cliente novo é o marketing trabalhando; recompra é relacionamento.</p>` + cruzRows;
 
-      box.innerHTML = aviso + progresso + cards + secTitle("Realizado × Meta por mês") + grafMes + secTitle("Ranking de vendedores") + rankRows + secTitle("Margem por origem do material") + orgRows + `<div style="border-top:2px solid var(--line);margin:30px 0 4px"></div>` + `<h3 style="font-family:Fraunces,serif;font-size:17px;margin:20px 0 4px">Marketing</h3>` + marketing;
+      box.innerHTML = aviso + progresso + cards + secTitle("Realizado × Meta por mês") + grafMes + secTitle("Ranking de vendedores") + rankRows + secTitle("Composição da receita: locação × frete") + receitaRows + secTitle("Entrega × Retirada") + modRows + secTitle("Margem por origem do material") + orgRows + `<div style="border-top:2px solid var(--line);margin:30px 0 4px"></div>` + `<h3 style="font-family:Fraunces,serif;font-size:17px;margin:20px 0 4px">Marketing</h3>` + marketing;
     }catch(e){ box.innerHTML='<div class="empty">Não foi possível montar os painéis.</div>'; console.error(e); }
   }
 </script>
