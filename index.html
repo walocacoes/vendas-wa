@@ -319,8 +319,8 @@
   function fmtBR(n){return (Number(n)||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});}
   function wireMoeda(ids){ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.addEventListener("blur",()=>{if(el.value.trim()==="")return;el.value=fmtBR(parseBR(el.value));});el.addEventListener("focus",()=>{if(el.value.trim()==="")return;const v=parseBR(el.value);el.value=Number.isInteger(v)?String(v):String(v).replace(".",",");});});}
   wireMoeda(["bruto","desconto","frete","repasse","valorDoado","adBruto","adDesconto","adFrete","adRepasse","m_bruto","m_desconto","m_frete","m_repasse","m_valorDoado"]);
-  const _doac=document.getElementById("doacao");if(_doac)_doac.addEventListener("change",e=>{document.getElementById("doadoWrap").style.display=e.target.checked?"flex":"none";});
-  const _mdoac=document.getElementById("m_doacao");if(_mdoac)_mdoac.addEventListener("change",e=>{document.getElementById("m_doadoWrap").style.display=e.target.checked?"flex":"none";});
+  const _doac=document.getElementById("doacao");if(_doac)_doac.addEventListener("change",e=>{document.getElementById("doadoWrap").style.display=e.target.checked?"flex":"none";if(!e.target.checked)document.getElementById("valorDoado").value="";calcular();});
+  const _mdoac=document.getElementById("m_doacao");if(_mdoac)_mdoac.addEventListener("change",e=>{document.getElementById("m_doadoWrap").style.display=e.target.checked?"flex":"none";if(!e.target.checked)document.getElementById("m_valorDoado").value="";mCalc();});
   const CAPS=s=>(s||"").toLocaleUpperCase("pt-BR");
   const slug=s=>(s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
   const semAcento=s=>(s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -422,8 +422,8 @@
   $("eqNome").addEventListener("input",()=>{$("eqMsg").textContent="";});
   $("eqAdd").addEventListener("click",async()=>{await addVendedor($("eqNome").value,false);await carregarEquipe();await configurarVendedor();});
 
-  function calcular(){const b=parseBR($("bruto").value)||0,d=parseBR($("desconto").value)||0,f=parseBR($("frete").value)||0,r=parseBR($("repasse").value)||0;const liq=b-d+f,mar=liq-r;$("liquidoOut").textContent=money(liq);$("margemOut").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
-  ["bruto","desconto","frete","repasse"].forEach(id=>$(id).addEventListener("input",calcular));
+  function calcular(){const b=parseBR($("bruto").value)||0,d=parseBR($("desconto").value)||0,f=parseBR($("frete").value)||0,r=parseBR($("repasse").value)||0;const doa=$("doacao").checked?(parseBR($("valorDoado").value)||0):0;let liq=b-d+f-doa;if(liq<0)liq=0;const mar=liq-r;$("liquidoOut").textContent=money(liq);$("margemOut").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,doado:doa,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
+  ["bruto","desconto","frete","repasse","valorDoado"].forEach(id=>$(id).addEventListener("input",calcular));
   $("origem").addEventListener("change",e=>{const m=e.target.value!=="proprio";$("repasseWrap").style.display=m?"flex":"none";if(!m){$("repasse").value="";calcular();}});
   $("numero").addEventListener("input",()=>{const de=dataEventoDoNumero($("numero").value.trim());$("eventoOut").textContent=de?`Evento em ${de.br}`:"";});
   $("numero").addEventListener("blur",checarDuplicado);
@@ -579,8 +579,8 @@
 
   // ===== Modal (revisão + edição) =====
   let idAtual=null, pAtual=null, travado=false;
-  function mCalc(){const b=parseBR($("m_bruto").value)||0,d=parseBR($("m_desconto").value)||0,f=parseBR($("m_frete").value)||0,r=parseBR($("m_repasse").value)||0;const liq=b-d+f,mar=liq-r;$("m_liquido").textContent=money(liq);$("m_margem").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
-  ["m_bruto","m_desconto","m_frete","m_repasse"].forEach(id=>$(id).addEventListener("input",mCalc));
+  function mCalc(){const b=parseBR($("m_bruto").value)||0,d=parseBR($("m_desconto").value)||0,f=parseBR($("m_frete").value)||0,r=parseBR($("m_repasse").value)||0;const doa=$("m_doacao").checked?(parseBR($("m_valorDoado").value)||0):0;let liq=b-d+f-doa;if(liq<0)liq=0;const mar=liq-r;$("m_liquido").textContent=money(liq);$("m_margem").textContent=money(mar);return{bruto:b,desc:d,frete:f,rep:r,doado:doa,liquido:+liq.toFixed(2),margem:+mar.toFixed(2)};}
+  ["m_bruto","m_desconto","m_frete","m_repasse","m_valorDoado"].forEach(id=>$(id).addEventListener("input",mCalc));
   const CAMPOS=["m_numero","m_cliente","m_fechamento","m_evento","m_vendedor","m_modalidade","m_bruto","m_desconto","m_frete","m_origem","m_repasse"];
   function setTravado(v){travado=v;CAMPOS.forEach(id=>$(id).disabled=v);}
   function abrirModal(id,p){
