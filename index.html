@@ -166,6 +166,8 @@
           <div class="field"><label for="frete">Frete (R$) <span class="opt">— opcional</span></label><input id="frete" type="text" inputmode="decimal" placeholder="0,00"></div>
           <div class="field"><label for="desconto">Desconto (R$) <span class="opt">— opcional</span></label><input id="desconto" type="text" inputmode="decimal" placeholder="0,00"></div>
           <div class="field full" id="repasseWrap" style="display:none"><label for="repasse">Repasse ao terceiro (R$) <span class="opt">— quanto vai pro parceiro</span></label><input id="repasse" type="text" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field full" style="flex-direction:row;align-items:center;gap:9px"><input type="checkbox" id="doacao" style="width:17px;height:17px;cursor:pointer"><label for="doacao" style="cursor:pointer;margin:0">Este pedido é uma <b>doação</b> <span class="opt">— permite valor zero; fica fora das vendas</span></label></div>
+          <div class="field full" id="doadoWrap" style="display:none"><label for="valorDoado">Valor doado (R$) <span class="opt">— quanto você está doando</span></label><input id="valorDoado" type="text" inputmode="decimal" placeholder="0,00"></div>
           <div class="calc"><div><div class="lbl">Valor líquido</div><div class="val" id="liquidoOut">R$ 0,00</div></div><div><div class="lbl">Margem WA</div><div class="val" id="margemOut">R$ 0,00</div></div></div>
           <div class="alert" id="dupAlert"><span>&#9888;&#65039;</span><span id="dupText"></span></div>
         </div>
@@ -282,6 +284,8 @@
       <div class="field"><label>Canal de aquisição</label><select id="m_canal"></select></div>
       <div class="field"><label>Cliente</label><select id="m_tipoCliente"><option value="">— selecione —</option><option value="novo">Novo</option><option value="recorrente">Recorrente</option></select></div>
       <div class="field full"><label>Repasse ao terceiro (R$)</label><input id="m_repasse" type="text" inputmode="decimal"></div>
+      <div class="field full" style="flex-direction:row;align-items:center;gap:9px"><input type="checkbox" id="m_doacao" style="width:17px;height:17px;cursor:pointer"><label for="m_doacao" style="cursor:pointer;margin:0">Doação <span class="opt">— fica fora das vendas</span></label></div>
+      <div class="field full" id="m_doadoWrap" style="display:none"><label>Valor doado (R$)</label><input id="m_valorDoado" type="text" inputmode="decimal"></div>
       <div class="calc"><div><div class="lbl">Valor líquido</div><div class="val" id="m_liquido">R$ 0,00</div></div><div><div class="lbl">Margem WA</div><div class="val" id="m_margem">R$ 0,00</div></div></div>
       <div class="rastro" id="m_rastro"></div>
     </div>
@@ -314,7 +318,9 @@
   function parseBR(s){s=(s||"").toString().trim();if(s==="")return 0;if(s.indexOf(",")>-1)s=s.replace(/\./g,"").replace(",",".");const n=parseFloat(s.replace(/[^0-9.\-]/g,""));return isNaN(n)?0:n;}
   function fmtBR(n){return (Number(n)||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});}
   function wireMoeda(ids){ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.addEventListener("blur",()=>{if(el.value.trim()==="")return;el.value=fmtBR(parseBR(el.value));});el.addEventListener("focus",()=>{if(el.value.trim()==="")return;const v=parseBR(el.value);el.value=Number.isInteger(v)?String(v):String(v).replace(".",",");});});}
-  wireMoeda(["bruto","desconto","frete","repasse","adBruto","adDesconto","adFrete","adRepasse","m_bruto","m_desconto","m_frete","m_repasse"]);
+  wireMoeda(["bruto","desconto","frete","repasse","valorDoado","adBruto","adDesconto","adFrete","adRepasse","m_bruto","m_desconto","m_frete","m_repasse","m_valorDoado"]);
+  const _doac=document.getElementById("doacao");if(_doac)_doac.addEventListener("change",e=>{document.getElementById("doadoWrap").style.display=e.target.checked?"flex":"none";});
+  const _mdoac=document.getElementById("m_doacao");if(_mdoac)_mdoac.addEventListener("change",e=>{document.getElementById("m_doadoWrap").style.display=e.target.checked?"flex":"none";});
   const CAPS=s=>(s||"").toLocaleUpperCase("pt-BR");
   const slug=s=>(s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
   const semAcento=s=>(s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -425,8 +431,8 @@
   async function checarDuplicado(){const numero=$("numero").value.trim(),al=$("dupAlert");ehDuplicado=false;al.classList.remove("show");if(!numero)return;try{const q=query(PEDIDOS,where("numeroPedido","==",numero),where("tipo","==","original"));const s=await getDocs(q);if(!s.empty){ehDuplicado=true;$("dupText").textContent=`Já existe um pedido com o número ${numero}. O cadastro será bloqueado para evitar duplicação. Se for um acréscimo neste contrato, use a aba "Novo aditivo".`;al.classList.add("show");}}catch(e){}}
 
   $("salvar").addEventListener("click",salvar);
-  async function salvar(){const msg=$("formMsg");msg.textContent="";const numero=$("numero").value.trim(),cliente=$("cliente").value.trim(),vend=vendedorEscolhido();if(!numero)return erro("Informe o número do pedido.");if(!cliente)return erro("Informe o nome do cliente.");const fech=$("fechamento").value||hoje();const c=calcular();if(c.bruto<=0)return erro("O valor bruto precisa ser maior que zero.");const b=$("salvar");b.disabled=true;b.textContent="Verificando…";try{const dup=await getDocs(query(PEDIDOS,where("numeroPedido","==",numero),where("tipo","==","original")));if(!dup.empty){b.disabled=false;b.textContent="Salvar pedido";return erro(`Já existe um pedido com o número ${numero}. Cadastro bloqueado para evitar duplicação. Se quer somar valor a esse contrato, use a aba "Novo aditivo".`);}}catch(e){console.error(e);}b.textContent="Salvando…";const de=dataEventoDoNumero(numero),mesRef=new Date(fech+"T00:00:00");const conf=perfil.papel==="admin"?"confirmado":"pendente";
-    try{await addDoc(PEDIDOS,{numeroPedido:numero,dataEvento:de?de.iso:null,dataRegistro:fech,dataFechamento:fech,mes:MESES[mesRef.getMonth()],cliente,documento:soDigitos($("documento").value)||null,vendedorId:vend.vendedorId,vendedorNome:vend.nome,valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,status:"ativo",tipo:"original",contratoRefId:null,modalidade:$("modalidade").value,origemMaterial:$("origem").value,canal:$("canal").value||null,tipoCliente:$("tipoCliente").value||null,repasseTerceiro:c.rep,margemWA:c.margem,possivelDuplicado:ehDuplicado,conferencia:conf,motivoDevolucao:null,criadoPor:perfil.uid,criadoPorNome:CAPS(perfil.nome),criadoEm:serverTimestamp(),editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()});["numero","cliente","documento","bruto","desconto","frete","repasse"].forEach(id=>$(id).value="");$("fechamento").value=hoje();$("eventoOut").textContent="";$("dupAlert").classList.remove("show");ehDuplicado=false;$("repasseWrap").style.display="none";$("origem").value="proprio";$("canal").value="";$("tipoCliente").value="";calcular();msg.className="msg ok";msg.textContent=conf==="confirmado"?`Pedido ${numero} salvo e confirmado.`:`Pedido ${numero} enviado para conferência.`;if(perfil.papel==="admin")atualizarContadorRevisao();}
+  async function salvar(){const msg=$("formMsg");msg.textContent="";const numero=$("numero").value.trim(),cliente=$("cliente").value.trim(),vend=vendedorEscolhido();if(!numero)return erro("Informe o número do pedido.");if(!cliente)return erro("Informe o nome do cliente.");const fech=$("fechamento").value||hoje();const c=calcular();const ehDoacao=$("doacao").checked;if(c.bruto<=0&&!ehDoacao)return erro("O valor bruto precisa ser maior que zero. (Se for doação, marque a opção Doação.)");const b=$("salvar");b.disabled=true;b.textContent="Verificando…";try{const dup=await getDocs(query(PEDIDOS,where("numeroPedido","==",numero),where("tipo","==","original")));if(!dup.empty){b.disabled=false;b.textContent="Salvar pedido";return erro(`Já existe um pedido com o número ${numero}. Cadastro bloqueado para evitar duplicação. Se quer somar valor a esse contrato, use a aba "Novo aditivo".`);}}catch(e){console.error(e);}b.textContent="Salvando…";const de=dataEventoDoNumero(numero),mesRef=new Date(fech+"T00:00:00");const conf=perfil.papel==="admin"?"confirmado":"pendente";
+    try{await addDoc(PEDIDOS,{numeroPedido:numero,dataEvento:de?de.iso:null,dataRegistro:fech,dataFechamento:fech,mes:MESES[mesRef.getMonth()],cliente,documento:soDigitos($("documento").value)||null,vendedorId:vend.vendedorId,vendedorNome:vend.nome,valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,status:"ativo",tipo:"original",contratoRefId:null,modalidade:$("modalidade").value,origemMaterial:$("origem").value,canal:$("canal").value||null,tipoCliente:$("tipoCliente").value||null,repasseTerceiro:c.rep,margemWA:c.margem,doacao:ehDoacao,valorDoado:ehDoacao?(parseBR($("valorDoado").value)||0):0,possivelDuplicado:ehDuplicado,conferencia:conf,motivoDevolucao:null,criadoPor:perfil.uid,criadoPorNome:CAPS(perfil.nome),criadoEm:serverTimestamp(),editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()});["numero","cliente","documento","bruto","desconto","frete","repasse","valorDoado"].forEach(id=>$(id).value="");$("fechamento").value=hoje();$("eventoOut").textContent="";$("dupAlert").classList.remove("show");ehDuplicado=false;$("repasseWrap").style.display="none";$("origem").value="proprio";$("canal").value="";$("tipoCliente").value="";$("doacao").checked=false;$("doadoWrap").style.display="none";calcular();msg.className="msg ok";msg.textContent=conf==="confirmado"?`Pedido ${numero} salvo e confirmado.`:`Pedido ${numero} enviado para conferência.`;if(perfil.papel==="admin")atualizarContadorRevisao();}
     catch(e){erro("Não foi possível salvar. Verifique a conexão e tente de novo.");console.error(e);}finally{b.disabled=false;b.textContent="Salvar pedido";}}
   function erro(t){const m=$("formMsg");m.className="msg err";m.textContent=t;}
 
@@ -476,7 +482,7 @@
     const ini=(pagina-1)*POR_PAGINA;
     const pageArr=imprimindoTudo?[...arr].sort((a,b)=>String(a.dataFechamento||a.dataRegistro||"").localeCompare(String(b.dataFechamento||b.dataRegistro||""))):arr.slice(ini,ini+POR_PAGINA);
     const linhas=pageArr.map(p=>`<tr>
-      <td>${p.numeroPedido||"—"} ${(p.tipo==="aditivo")?'<span class="badge mut">aditivo</span>':''}</td><td>${p.cliente||"—"}${celDoc(p)}</td><td>${CAPS(p.vendedorNome||p.vendedorId||"—")}</td>
+      <td>${p.numeroPedido||"—"} ${(p.tipo==="aditivo")?'<span class="badge mut">aditivo</span>':''}${p.doacao?'<span class="badge dev">doação</span>':''}</td><td>${p.cliente||"—"}${celDoc(p)}</td><td>${CAPS(p.vendedorNome||p.vendedorId||"—")}</td>
       <td class="data">${brData(p.dataFechamento||p.dataRegistro)}</td><td class="data">${brData(p.dataEvento)}</td>
       <td class="money">${money(p.valorLiquido)}</td><td>${badge(p.conferencia||"pendente")}</td>
       <td><button class="btn-sm" data-ver="${p.id}">Abrir</button></td></tr>`).join("");
@@ -538,7 +544,7 @@
       <span id="revSelInfo" style="font-size:13px;color:var(--muted)">Nenhum selecionado</span></div>`;
     const linhas=arr.map(p=>`<tr>
       <td style="width:34px"><input type="checkbox" class="revChk" data-id="${p.id}" ${selRev.has(p.id)?"checked":""} style="width:17px;height:17px;cursor:pointer"></td>
-      <td>${p.numeroPedido||"—"} ${(p.tipo==="aditivo")?'<span class="badge mut">aditivo</span>':''}</td><td>${p.cliente||"—"}${celDoc(p)}</td><td>${CAPS(p.vendedorNome||p.vendedorId||"—")}</td><td class="data">${brData(p.dataFechamento||p.dataRegistro)}</td><td class="data">${brData(p.dataEvento)}</td><td class="money">${money(p.valorLiquido)}</td><td><button class="btn-sm" data-rev="${p.id}">Revisar</button></td></tr>`).join("");
+      <td>${p.numeroPedido||"—"} ${(p.tipo==="aditivo")?'<span class="badge mut">aditivo</span>':''}${p.doacao?'<span class="badge dev">doação</span>':''}</td><td>${p.cliente||"—"}${celDoc(p)}</td><td>${CAPS(p.vendedorNome||p.vendedorId||"—")}</td><td class="data">${brData(p.dataFechamento||p.dataRegistro)}</td><td class="data">${brData(p.dataEvento)}</td><td class="money">${money(p.valorLiquido)}</td><td><button class="btn-sm" data-rev="${p.id}">Revisar</button></td></tr>`).join("");
     box.innerHTML=toolbar+`<table><thead><tr><th style="width:34px"><input type="checkbox" id="revChkAll" title="Selecionar todos" style="width:17px;height:17px;cursor:pointer"></th><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Fechamento</th><th>Evento</th><th>Líquido</th><th></th></tr></thead><tbody>${linhas}</tbody></table>`;
     box.querySelectorAll("[data-rev]").forEach(b=>b.addEventListener("click",()=>abrirModal(b.dataset.rev,pendentesCache[b.dataset.rev])));
     const idsVisiveis=arr.map(p=>p.id);
@@ -582,7 +588,7 @@
     $("mSub").textContent=`${p.tipo==="aditivo"?"ADITIVO • ":""}Nº ${p.numeroPedido||"—"} • ${badge(conf).replace(/<[^>]+>/g,"").trim()} • lançado por ${CAPS(p.vendedorNome||p.vendedorId||"—")}`;
     $("m_numero").value=p.numeroPedido||"";$("m_cliente").value=p.cliente||"";$("m_documento").value=p.documento?formatDoc(p.documento):"";$("m_fechamento").value=(p.dataFechamento||p.dataRegistro||"").slice(0,10);$("m_evento").value=(p.dataEvento||"").slice(0,10);
     let ops=opcoesVendedor(p.vendedorId);if(p.vendedorId&&!equipe.some(v=>v.vendedorId===p.vendedorId))ops=`<option value="${p.vendedorId}" selected>${CAPS(p.vendedorNome||p.vendedorId)} (fora da lista)</option>`+ops;$("m_vendedor").innerHTML=ops;
-    $("m_modalidade").value=p.modalidade||"retirada";$("m_bruto").value=p.valorBruto!=null?fmtBR(p.valorBruto):"";$("m_desconto").value=fmtBR(p.desconto||0);$("m_frete").value=fmtBR(p.frete||0);$("m_origem").value=p.origemMaterial||"proprio";$("m_canal").value=p.canal||"";$("m_tipoCliente").value=p.tipoCliente||"";$("m_repasse").value=fmtBR(p.repasseTerceiro||0);
+    $("m_modalidade").value=p.modalidade||"retirada";$("m_bruto").value=p.valorBruto!=null?fmtBR(p.valorBruto):"";$("m_desconto").value=fmtBR(p.desconto||0);$("m_frete").value=fmtBR(p.frete||0);$("m_origem").value=p.origemMaterial||"proprio";$("m_canal").value=p.canal||"";$("m_tipoCliente").value=p.tipoCliente||"";$("m_repasse").value=fmtBR(p.repasseTerceiro||0);$("m_doacao").checked=!!p.doacao;$("m_doadoWrap").style.display=p.doacao?"flex":"none";$("m_valorDoado").value=fmtBR(p.valorDoado||0);
     const ed=tsBr(p.editadoEm),cr=tsBr(p.criadoEm);$("m_rastro").innerHTML=(ed?`Última alteração por <b>${CAPS(p.editadoPorNome||"—")}</b> em ${ed}.`:"")+(cr?`<br>Lançado por <b>${CAPS(p.criadoPorNome||"—")}</b> em ${cr}.`:"")+(p.origem==="importacao"?"<br>Origem: importação da planilha.":"");
     $("m_motivo").value="";$("devbox").classList.remove("show");$("mMsg").textContent="";mCalc();
     // banner do motivo (quando devolvido)
@@ -612,7 +618,7 @@
   $("mDestravar").addEventListener("click",()=>{ if(confirm("Este pedido já está confirmado. Deseja destravar para editar?")){ setTravado(false); $("lockbar").classList.remove("show"); } });
   function fecharModal(){$("modalBg").classList.remove("show");idAtual=null;pAtual=null;}
   $("mFechar").addEventListener("click",fecharModal);$("modalBg").addEventListener("click",e=>{if(e.target===$("modalBg"))fecharModal();});
-  function dadosEditados(){const c=mCalc();const vid=$("m_vendedor").value;const nome=teamNome[vid]||CAPS($("m_vendedor").options[$("m_vendedor").selectedIndex].text.replace(" (fora da lista)",""));const fech=$("m_fechamento").value||null;const mesRef=fech?new Date(fech+"T00:00:00"):null;return{numeroPedido:$("m_numero").value.trim(),cliente:$("m_cliente").value.trim(),documento:soDigitos($("m_documento").value)||null,vendedorId:vid,vendedorNome:nome,dataFechamento:fech,dataRegistro:fech,dataEvento:$("m_evento").value||null,mes:mesRef?MESES[mesRef.getMonth()]:null,modalidade:$("m_modalidade").value,valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,origemMaterial:$("m_origem").value,canal:$("m_canal").value||null,tipoCliente:$("m_tipoCliente").value||null,repasseTerceiro:c.rep,margemWA:c.margem,editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()};}
+  function dadosEditados(){const c=mCalc();const vid=$("m_vendedor").value;const nome=teamNome[vid]||CAPS($("m_vendedor").options[$("m_vendedor").selectedIndex].text.replace(" (fora da lista)",""));const fech=$("m_fechamento").value||null;const mesRef=fech?new Date(fech+"T00:00:00"):null;return{numeroPedido:$("m_numero").value.trim(),cliente:$("m_cliente").value.trim(),documento:soDigitos($("m_documento").value)||null,vendedorId:vid,vendedorNome:nome,dataFechamento:fech,dataRegistro:fech,dataEvento:$("m_evento").value||null,mes:mesRef?MESES[mesRef.getMonth()]:null,modalidade:$("m_modalidade").value,valorBruto:c.bruto,desconto:c.desc,frete:c.frete,valorLiquido:c.liquido,origemMaterial:$("m_origem").value,canal:$("m_canal").value||null,tipoCliente:$("m_tipoCliente").value||null,repasseTerceiro:c.rep,margemWA:c.margem,doacao:$("m_doacao").checked,valorDoado:$("m_doacao").checked?(parseBR($("m_valorDoado").value)||0):0,editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()};}
   async function aplicar(patch, txtBtn, btn){btn.disabled=true;const orig=btn.textContent;btn.textContent=txtBtn;try{await updateDoc(doc(db,"pedidos",idAtual),patch);fecharModal();jaCarregou=false;if($("view-revisao").style.display!=="none")await carregarRevisao();if($("view-lista").style.display!=="none")await carregarLista();if($("view-devolvidos").style.display!=="none")await carregarDevolvidos();if(perfil.papel==="admin")atualizarContadorRevisao();else atualizarContadorDevolvidos();}catch(e){$("mMsg").className="msg err";$("mMsg").textContent=(e&&e.code&&String(e.code).includes("permission"))?"Sem permissão — publique as regras novas do Firestore.":"Erro ao salvar.";console.error(e);}finally{btn.disabled=false;btn.textContent=orig;}}
   $("mConfirmar").addEventListener("click",()=>aplicar({...dadosEditados(),conferencia:"confirmado",motivoDevolucao:null,confirmadoPor:perfil.uid,confirmadoEm:serverTimestamp()},"Confirmando…",$("mConfirmar")));
   $("mSalvar").addEventListener("click",()=>aplicar({...dadosEditados()},"Salvando…",$("mSalvar")));
@@ -752,14 +758,17 @@
       let metas={}; try{const md=await getDoc(doc(db,"metas","2026")); if(md.exists())metas=md.data();}catch(e){}
 
       const realMes={}, contMes={};
-      conf.forEach(p=>{const m=p.mes; if(m){realMes[m]=(realMes[m]||0)+(Number(p.valorLiquido)||0); if((p.tipo||"original")==="original")contMes[m]=(contMes[m]||0)+1;}});
+      const ehVenda=p=>(p.tipo||"original")==="original" && (Number(p.valorLiquido)||0)>0;
+      conf.forEach(p=>{const m=p.mes; if(m){realMes[m]=(realMes[m]||0)+(Number(p.valorLiquido)||0); if(ehVenda(p))contMes[m]=(contMes[m]||0)+1;}});
       const realizadoYTD=conf.reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);
-      const contratosYTD=conf.filter(p=>(p.tipo||"original")==="original").length;
+      const contratosYTD=conf.filter(ehVenda).length;
+      const totalDoado=conf.reduce((s,p)=>s+(p.doacao?(Number(p.valorDoado)||0):0),0);
+      const nDoacoes=conf.filter(p=>p.doacao).length;
       const metaAcum=MESES.reduce((s,m)=>s+((realMes[m]>0)?(Number(metas[m])||0):0),0);
       const ticket=contratosYTD?realizadoYTD/contratosYTD:0;
       const pctMeta=metaAcum?realizadoYTD/metaAcum:0;
 
-      const rv={}; conf.forEach(p=>{const id=p.vendedorId||"—"; if(!rv[id])rv[id]={liq:0,cont:0,nome:teamNome[id]||CAPS(p.vendedorNome||id)}; rv[id].liq+=Number(p.valorLiquido)||0; if((p.tipo||"original")==="original")rv[id].cont++;});
+      const rv={}; conf.forEach(p=>{const id=p.vendedorId||"—"; if(!rv[id])rv[id]={liq:0,cont:0,nome:teamNome[id]||CAPS(p.vendedorNome||id)}; rv[id].liq+=Number(p.valorLiquido)||0; if(ehVenda(p))rv[id].cont++;});
       const ranking=Object.values(rv).sort((a,b)=>b.liq-a.liq);
       const org={}; conf.forEach(p=>{const o=p.origemMaterial||"proprio"; org[o]=(org[o]||0)+(Number(p.margemWA)||0);});
       const origemLabels={proprio:"Próprio",terceiro:"Terceiro",misto:"Misto"};
@@ -779,7 +788,8 @@
         ${card("Meta acumulada",money(metaAcum),"meses com venda")}
         ${card("% da meta",(pctMeta*100).toFixed(0)+"%")}
         ${card("Contratos",contratosYTD)}
-        ${card("Ticket médio",money(ticket))}</div>`;
+        ${card("Ticket médio",money(ticket))}
+        ${nDoacoes?card("Doações",money(totalDoado),nDoacoes+" pedido(s), fora das vendas"):""}</div>`;
 
       // realizado vs meta por mês (só o mês filtrado, se houver)
       const mesesShow = fMes ? [fMes] : MESES;
