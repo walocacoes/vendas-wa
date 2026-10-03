@@ -838,6 +838,19 @@
         ${card("Frete",money(freteTot),"entregas cobradas")}
         ${card("Total (líquido)",money(realizadoYTD))}</div>`;
 
+      // fechamentos por dia da semana
+      const dia={0:0,1:0,2:0,3:0,4:0,5:0,6:0},diaLiq={0:0,1:0,2:0,3:0,4:0,5:0,6:0};
+      const sem={1:0,2:0,3:0,4:0,5:0},semLiq={1:0,2:0,3:0,4:0,5:0};
+      conf.forEach(p=>{const iso=String(p.dataFechamento||p.dataRegistro||"").slice(0,10);if(iso.length<10)return;const dt=new Date(iso+"T00:00:00");if(!isNaN(dt)){const wd=dt.getDay();dia[wd]++;diaLiq[wd]+=Number(p.valorLiquido)||0;}const d=parseInt(iso.slice(8,10),10);if(d){const w=Math.min(5,Math.ceil(d/7));sem[w]++;semLiq[w]+=Number(p.valorLiquido)||0;}});
+      const ordemDia=[[1,"Segunda"],[2,"Terça"],[3,"Quarta"],[4,"Quinta"],[5,"Sexta"],[6,"Sábado"],[0,"Domingo"]];
+      const maxDia=Math.max(1,...Object.values(dia));
+      const temFech=Object.values(dia).some(v=>v>0);
+      const barra=(w,cor)=>`<div style="height:12px;background:#EEECE6;border-radius:99px"><div style="height:100%;width:${w}%;background:${cor};border-radius:99px"></div></div>`;
+      const diaRows = temFech ? ordemDia.map(([k,nome])=>`<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><b>${nome}</b><span style="color:var(--muted)">${dia[k]} fechamento(s) • ${money(diaLiq[k])}</span></div>${barra(Math.round(dia[k]/maxDia*100),"var(--brand)")}</div>`).join("") : `<div class="empty">Sem fechamentos no período.</div>`;
+      const maxSem=Math.max(1,...Object.values(sem));
+      const semLabels={1:"1ª semana (dias 1 a 7)",2:"2ª semana (8 a 14)",3:"3ª semana (15 a 21)",4:"4ª semana (22 a 28)",5:"5ª semana (29 a 31)"};
+      const semRows = temFech ? [1,2,3,4,5].map(w=>`<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><b>${semLabels[w]}</b><span style="color:var(--muted)">${sem[w]} fechamento(s) • ${money(semLiq[w])}</span></div>${barra(Math.round(sem[w]/maxSem*100),"#2A2830")}</div>`).join("") : `<div class="empty">Sem fechamentos no período.</div>`;
+
       const aviso = nConf===0 ? `<div style="background:var(--warn-soft);border:1px solid #EAD9AE;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--warn);margin-bottom:6px">Nenhum pedido confirmado ainda — os painéis estão zerados de propósito. Vá na aba <b>Revisão</b> confirmando pedidos e volte aqui: os números sobem na hora.</div>` : "";
 
       // ===== MARKETING =====
@@ -870,7 +883,7 @@
         + secTitle("Clientes novos × recorrentes") + tcRows
         + secTitle("Cruzamento: canal × tipo de cliente") + `<p style="font-size:12px;color:var(--muted);margin:-6px 0 12px">Quem traz cliente novo é o marketing trabalhando; recompra é relacionamento.</p>` + cruzRows;
 
-      box.innerHTML = aviso + progresso + cards + secTitle("Realizado × Meta por mês") + grafMes + secTitle("Ranking de vendedores") + rankRows + secTitle("Composição da receita: locação × frete") + receitaRows + secTitle("Entrega × Retirada") + modRows + secTitle("Margem por origem do material") + orgRows + `<div style="border-top:2px solid var(--line);margin:30px 0 4px"></div>` + `<h3 style="font-family:Fraunces,serif;font-size:17px;margin:20px 0 4px">Marketing</h3>` + marketing;
+      box.innerHTML = aviso + progresso + cards + secTitle("Realizado × Meta por mês") + grafMes + secTitle("Ranking de vendedores") + rankRows + secTitle("Composição da receita: locação × frete") + receitaRows + secTitle("Entrega × Retirada") + modRows + secTitle("Fechamentos por dia da semana") + diaRows + secTitle("Fechamentos por semana do mês") + semRows + secTitle("Margem por origem do material") + orgRows + `<div style="border-top:2px solid var(--line);margin:30px 0 4px"></div>` + `<h3 style="font-family:Fraunces,serif;font-size:17px;margin:20px 0 4px">Marketing</h3>` + marketing;
     }catch(e){ box.innerHTML='<div class="empty">Não foi possível montar os painéis.</div>'; console.error(e); }
   }
 </script>
