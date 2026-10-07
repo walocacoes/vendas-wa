@@ -145,6 +145,7 @@
         <button class="tab" data-view="lista">Pedidos lançados</button>
         <button class="tab" data-view="devolvidos" id="tabDevolvidos" style="display:none">Devolvidos<span class="count" id="devCount" style="display:none">0</span></button>
         <button class="tab" data-view="revisao" id="tabRevisao" style="display:none">Revisão<span class="count" id="revCount" style="display:none">0</span></button>
+        <button class="tab" data-view="logistica" id="tabLogistica" style="display:none">Logística</button>
         <button class="tab" data-view="equipe" id="tabEquipe" style="display:none">Equipe</button>
         <button class="tab" data-view="dashboard" id="tabDashboard" style="display:none">Painéis</button>
       </div>
@@ -202,6 +203,20 @@
         </div>
         <div class="resumo" id="revResumo"></div>
         <div id="revBox"><div class="empty">Carregando…</div></div>
+      </div></section>
+
+      <!-- LOGÍSTICA -->
+      <section id="view-logistica" style="display:none"><div class="card">
+        <h2>Entrega e retirada: conferir com a logística</h2>
+        <p class="hint">Carregue o arquivo de modalidades gerado a partir do relatório de logística do Estoque Now (colunas: pedido;modalidade). O sistema compara com o que está lançado e mostra só o que diverge. Os casos de alta confiança já vêm marcados, e uma cópia dos valores atuais é baixada antes de aplicar.</p>
+        <div class="addrow"><div class="field"><label for="lgArquivo">Arquivo da logística (.csv)</label><input type="file" id="lgArquivo" accept=".csv,.txt,text/csv"></div></div>
+        <div class="msg" id="lgMsg" style="margin:8px 0 12px"></div>
+        <div class="filtros" id="lgFiltros" style="display:none">
+          <div class="f"><label for="lgMes">Mês</label><select id="lgMes"><option value="">Todos</option></select></div>
+          <div class="f"><label for="lgGrupo">Situação</label><select id="lgGrupo"><option value="">Todas</option><option value="alta">Corrigir (alta confiança)</option><option value="conferir">Conferir</option><option value="aditivo">Aditivos</option><option value="vazio">Sem modalidade</option></select></div>
+        </div>
+        <div class="resumo" id="lgResumo"></div>
+        <div id="lgBox"><div class="empty">Carregue o arquivo para começar.</div></div>
       </div></section>
 
       <!-- EQUIPE -->
@@ -355,7 +370,7 @@
       perfil.uid=user.uid;perfil.vendedorId=slug(perfil.nome);
     }catch(e){perfil={uid:user.uid,nome:(user.email||"").split("@")[0],papel:"vendedor",vendedorId:slug((user.email||"").split("@")[0])};}
     $("uNome").textContent=CAPS(perfil.nome||user.email);$("uRole").textContent=perfil.papel==="admin"?"Administrador":"Vendedor";
-    const adm=perfil.papel==="admin";$("tabRevisao").style.display=adm?"inline-flex":"none";$("tabEquipe").style.display=adm?"inline-flex":"none";$("tabDashboard").style.display=adm?"inline-flex":"none";$("tabDevolvidos").style.display=adm?"none":"inline-flex";
+    const adm=perfil.papel==="admin";$("tabRevisao").style.display=adm?"inline-flex":"none";$("tabLogistica").style.display=adm?"inline-flex":"none";$("tabEquipe").style.display=adm?"inline-flex":"none";$("tabDashboard").style.display=adm?"inline-flex":"none";$("tabDevolvidos").style.display=adm?"none":"inline-flex";
     $("login").style.display="none";$("app").style.display="block";$("fechamento").value=hoje();
     try{await getDocs(query(PEDIDOS,limit(1)));setConn("ok","Conectado ao banco vendas-wa");}catch(e){setConn("err","Sem conexão com o banco.");}
     await carregarEquipe();await configurarVendedor();fillCanais();calcular();if(adm)atualizarContadorRevisao();else atualizarContadorDevolvidos();
@@ -438,7 +453,7 @@
   function erro(t){const m=$("formMsg");m.className="msg err";m.textContent=t;}
 
   const tabs=document.querySelectorAll(".tab");
-  tabs.forEach(t=>t.addEventListener("click",()=>{tabs.forEach(x=>x.classList.remove("active"));t.classList.add("active");const v=t.dataset.view;$("view-novo").style.display=v==="novo"?"block":"none";$("view-lista").style.display=v==="lista"?"block":"none";$("view-revisao").style.display=v==="revisao"?"block":"none";$("view-equipe").style.display=v==="equipe"?"block":"none";$("view-dashboard").style.display=v==="dashboard"?"block":"none";$("view-devolvidos").style.display=v==="devolvidos"?"block":"none";$("view-aditivo").style.display=v==="aditivo"?"block":"none";if(v==="lista")carregarLista();if(v==="revisao")carregarRevisao();if(v==="equipe")renderEquipe();if(v==="dashboard")renderDashboard();if(v==="devolvidos")carregarDevolvidos();if(v==="aditivo")resetAditivo();}));
+  tabs.forEach(t=>t.addEventListener("click",()=>{tabs.forEach(x=>x.classList.remove("active"));t.classList.add("active");const v=t.dataset.view;$("view-novo").style.display=v==="novo"?"block":"none";$("view-lista").style.display=v==="lista"?"block":"none";$("view-revisao").style.display=v==="revisao"?"block":"none";$("view-logistica").style.display=v==="logistica"?"block":"none";$("view-equipe").style.display=v==="equipe"?"block":"none";$("view-dashboard").style.display=v==="dashboard"?"block":"none";$("view-devolvidos").style.display=v==="devolvidos"?"block":"none";$("view-aditivo").style.display=v==="aditivo"?"block":"none";if(v==="lista")carregarLista();if(v==="revisao")carregarRevisao();if(v==="logistica")lgAbrir();if(v==="equipe")renderEquipe();if(v==="dashboard")renderDashboard();if(v==="devolvidos")carregarDevolvidos();if(v==="aditivo")resetAditivo();}));
 
   // ===== LISTA com filtros/busca/paginação =====
   let todosPedidos=[]; let pagina=1; const POR_PAGINA=40; let jaCarregou=false; let imprimindoTudo=false;
@@ -487,7 +502,7 @@
       <td class="data">${brData(p.dataFechamento||p.dataRegistro)}</td><td class="data">${brData(p.dataEvento)}</td>
       <td class="money">${money(p.valorLiquido)}</td><td>${p.modalidade==="entrega"?"Entrega":(p.modalidade==="retirada"?"Retirada":"—")}</td><td>${badge(p.conferencia||"pendente")}</td>
       <td><button class="btn-sm" data-ver="${p.id}">Abrir</button></td></tr>`).join("");
-    box.innerHTML=`<div class="tblwrap" style="overflow-x:auto"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Fechamento</th><th>Evento</th><th>Líquido</th><th style="line-height:1.2">Entrega/<br>Retirada</th><th>Situação</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+    box.innerHTML=`<div class="tblwrap" style="overflow-x:auto"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Fechamento</th><th>Evento</th><th>Líquido</th><th>Entrega/Retirada</th><th>Situação</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
     box.querySelectorAll("[data-ver]").forEach(b=>b.addEventListener("click",()=>{const p=todosPedidos.find(x=>x.id===b.dataset.ver);abrirModal(b.dataset.ver,p);}));
     $("paginacao").innerHTML = maxPag>1 ? `<button class="btn-sm" id="pgPrev" ${pagina===1?"disabled":""}>← Anterior</button><span style="font-size:13px;color:var(--muted)">Página ${pagina} de ${maxPag}</span><button class="btn-sm" id="pgNext" ${pagina===maxPag?"disabled":""}>Próxima →</button>` : "";
     if($("pgPrev"))$("pgPrev").addEventListener("click",()=>{pagina--;renderLista();window.scrollTo(0,0);});
@@ -583,6 +598,122 @@
   }
   $("rBusca").addEventListener("input",()=>{selRev.clear();renderRevisao();});
   ["rVendedor","rMes","rTipo"].forEach(id=>$(id).addEventListener("change",()=>{selRev.clear();renderRevisao();}));
+
+
+  // ===== LOGÍSTICA: entrega x retirada em lote (somente administrador) =====
+  let lgMapa=new Map(), lgLinhas=[], lgSel=new Set(), lgInfo={iguais:0,semLog:0,semSistema:0}, lgCarregando=false;
+  const LG_GRUPOS={alta:["Corrigir","dev"],conferir:["Conferir","pend"],aditivo:["Aditivo","mut"],vazio:["Sem modalidade","dev"]};
+  const lgBase=n=>{const m=String(n||"").match(/\d{6}\/\d{3}/);return m?m[0]:null;};
+  const lgModo=t=>{t=semAcento(t||"").trim();if(t.indexOf("entreg")===0)return "entrega";if(t.indexOf("retir")===0)return "retirada";return null;};
+  const lgRotulo=m=>m==="entrega"?"Entrega":(m==="retirada"?"Retirada":"—");
+  function lgParseCSV(txt){
+    const linhas=String(txt||"").replace(/^\uFEFF/,"").split(/\r?\n/).filter(l=>l.trim());
+    const mapa=new Map();if(!linhas.length)return mapa;
+    const sep=(linhas[0].split(";").length>=linhas[0].split(",").length)?";":",";
+    linhas.forEach(l=>{const c=l.split(sep).map(x=>x.replace(/^"|"$/g,"").trim());const b=lgBase(c[0]),m=lgModo(c[1]);if(b&&m)mapa.set(b,m);});
+    return mapa;
+  }
+  function lgClassificar(p,alvo){
+    const atual=(p.modalidade==="entrega"||p.modalidade==="retirada")?p.modalidade:null;
+    if(atual===alvo)return null;
+    if(!atual)return {g:"vazio",motivo:"Sem modalidade no sistema"};
+    if(p.tipo==="aditivo")return {g:"aditivo",motivo:"Aditivo: segue a modalidade do pedido original"};
+    if(atual==="retirada"&&alvo==="entrega"){
+      if((Number(p.frete)||0)>0)return {g:"alta",motivo:"Há frete cobrado, então é entrega"};
+      return {g:"conferir",motivo:"A logística tem endereço de entrega, mas não há frete cobrado"};
+    }
+    return {g:"alta",motivo:"A logística indica que o cliente retira na loja"};
+  }
+  function lgAbrir(){if(perfil&&perfil.papel!=="admin")return;}
+  $("lgArquivo").addEventListener("change",async e=>{
+    const f=e.target.files&&e.target.files[0];if(!f)return;
+    const msg=$("lgMsg");msg.className="msg";msg.textContent="Lendo o arquivo…";
+    try{
+      lgMapa=lgParseCSV(await f.text());
+      if(!lgMapa.size){msg.className="msg err";msg.textContent="Não encontrei pedidos e modalidades no arquivo. Use as colunas: pedido;modalidade.";return;}
+      await lgComparar();
+      msg.className="msg ok";msg.textContent=`Arquivo lido: ${lgMapa.size} pedido(s) na logística.`;
+    }catch(err){console.error(err);msg.className="msg err";msg.textContent="Não foi possível ler o arquivo.";}
+  });
+  async function lgComparar(){
+    const box=$("lgBox");box.innerHTML='<div class="empty">Comparando com o sistema…</div>';
+    let pedidos=[];
+    try{const snap=await getDocs(PEDIDOS);snap.forEach(d=>pedidos.push({id:d.id,...d.data()}));}
+    catch(e){console.error(e);box.innerHTML='<div class="empty">Não foi possível carregar os pedidos.</div>';return;}
+    lgLinhas=[];let iguais=0,semLog=0;const vistos=new Set();
+    pedidos.forEach(p=>{
+      const b=lgBase(p.numeroPedido);if(!b)return;
+      const alvo=lgMapa.get(b);if(!alvo){semLog++;return;}
+      vistos.add(b);
+      const r=lgClassificar(p,alvo);if(!r){iguais++;return;}
+      lgLinhas.push({id:p.id,p,alvo,g:r.g,motivo:r.motivo});
+    });
+    lgLinhas.sort((a,b)=>String(a.p.dataFechamento||a.p.dataRegistro||"").localeCompare(String(b.p.dataFechamento||b.p.dataRegistro||"")));
+    lgInfo={iguais,semLog,semSistema:[...lgMapa.keys()].filter(b=>!vistos.has(b)).length};
+    lgSel=new Set(lgLinhas.filter(x=>x.g==="alta"||x.g==="vazio").map(x=>x.id));
+    const mesSel=$("lgMes").value;
+    const meses=[...new Set(lgLinhas.map(x=>x.p.mes).filter(Boolean))].sort((a,b)=>MESES.indexOf(a)-MESES.indexOf(b));
+    $("lgMes").innerHTML='<option value="">Todos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join("");
+    $("lgMes").value=meses.includes(mesSel)?mesSel:"";
+    $("lgFiltros").style.display="flex";
+    lgRender();
+  }
+  function lgVisiveis(){const mes=$("lgMes").value,g=$("lgGrupo").value;return lgLinhas.filter(x=>(!mes||x.p.mes===mes)&&(!g||x.g===g));}
+  function lgRender(){
+    const box=$("lgBox"),arr=lgVisiveis();
+    const c={alta:0,conferir:0,aditivo:0,vazio:0};lgLinhas.forEach(x=>c[x.g]++);
+    $("lgResumo").innerHTML=`<b>${lgLinhas.length}</b> divergência(s): ${c.alta} para corrigir, ${c.conferir} para conferir, ${c.aditivo} aditivo(s), ${c.vazio} sem modalidade • ${lgInfo.iguais} já estão certos • ${lgInfo.semLog} lançamento(s) sem movimentação na logística • ${lgInfo.semSistema} pedido(s) da logística sem lançamento`;
+    if(!lgLinhas.length){box.innerHTML='<div class="empty">Tudo certo: nenhuma divergência de entrega ou retirada. ✓</div>';return;}
+    if(!arr.length){box.innerHTML='<div class="empty">Nenhuma divergência com esses filtros.</div>';return;}
+    const tool=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="primary" id="lgAplicar" disabled>Aplicar aos selecionados</button>
+      <button class="btn-sm" id="lgSelAlta" type="button">Marcar só os de alta confiança</button>
+      <button class="btn-sm" id="lgSelVis" type="button">Marcar todos os visíveis</button>
+      <button class="btn-sm" id="lgLimpar" type="button">Limpar marcação</button>
+      <span id="lgSelInfo" style="font-size:13px;color:var(--muted)"></span></div>`;
+    const linhas=arr.map(x=>{const p=x.p,gr=LG_GRUPOS[x.g];return `<tr>
+      <td style="width:34px"><input type="checkbox" class="lgChk" data-id="${x.id}" ${lgSel.has(x.id)?"checked":""} style="width:17px;height:17px;cursor:pointer"></td>
+      <td>${p.numeroPedido||"—"} ${p.tipo==="aditivo"?'<span class="badge mut">aditivo</span>':''}</td><td>${p.cliente||"—"}</td><td>${p.mes||"—"}</td>
+      <td class="money">${money(p.frete)}</td><td>${lgRotulo(p.modalidade)}</td><td><b>${lgRotulo(x.alvo)}</b></td>
+      <td><span class="badge ${gr[1]}">${gr[0]}</span> <span style="font-size:12px;color:var(--muted)">${x.motivo}</span></td></tr>`;}).join("");
+    box.innerHTML=tool+`<div style="overflow-x:auto"><table><thead><tr><th style="width:34px"><input type="checkbox" id="lgChkAll" title="Selecionar todos os visíveis" style="width:17px;height:17px;cursor:pointer"></th><th>Pedido</th><th>Cliente</th><th>Mês</th><th>Frete</th><th>No sistema</th><th>Logística</th><th>Motivo</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+    const ids=arr.map(x=>x.id);
+    box.querySelectorAll(".lgChk").forEach(k=>k.addEventListener("change",()=>{if(k.checked)lgSel.add(k.dataset.id);else lgSel.delete(k.dataset.id);lgAtualizarSel(ids);}));
+    $("lgChkAll").addEventListener("change",e=>{const on=e.target.checked;box.querySelectorAll(".lgChk").forEach(k=>{k.checked=on;if(on)lgSel.add(k.dataset.id);else lgSel.delete(k.dataset.id);});lgAtualizarSel(ids);});
+    $("lgSelAlta").addEventListener("click",()=>{lgSel=new Set(lgLinhas.filter(x=>x.g==="alta"||x.g==="vazio").map(x=>x.id));lgRender();});
+    $("lgSelVis").addEventListener("click",()=>{ids.forEach(id=>lgSel.add(id));lgRender();});
+    $("lgLimpar").addEventListener("click",()=>{lgSel.clear();lgRender();});
+    $("lgAplicar").addEventListener("click",lgAplicar);
+    lgAtualizarSel(ids);
+  }
+  function lgAtualizarSel(ids){
+    const n=ids.filter(id=>lgSel.has(id)).length,btn=$("lgAplicar"),info=$("lgSelInfo"),all=$("lgChkAll");
+    if(btn){btn.disabled=n===0;btn.textContent=n>0?`Aplicar a ${n} selecionado(s)`:"Aplicar aos selecionados";}
+    if(info)info.textContent=n>0?`${n} pedido(s) marcado(s)`:"Nenhum selecionado";
+    if(all){all.checked=n>0&&n===ids.length;all.indeterminate=n>0&&n<ids.length;}
+  }
+  function baixarTexto(nome,txt){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\uFEFF"+txt],{type:"text/csv;charset=utf-8"}));a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);}
+  async function lgAplicar(){
+    if(lgCarregando)return;
+    const alvo=lgVisiveis().filter(x=>lgSel.has(x.id));if(!alvo.length)return;
+    if(!confirm(`Alterar a modalidade de ${alvo.length} pedido(s) para o que consta na logística?\n\nAntes de aplicar, uma cópia dos valores atuais será baixada no seu computador.`))return;
+    lgCarregando=true;const btn=$("lgAplicar"),msg=$("lgMsg");btn.disabled=true;btn.textContent="Aplicando…";
+    try{
+      baixarTexto(`backup_modalidade_${hoje()}.csv`,"id;pedido;tipo;modalidade_anterior\n"+alvo.map(x=>[x.id,x.p.numeroPedido||"",x.p.tipo||"original",x.p.modalidade||""].join(";")).join("\n"));
+      for(let i=0;i<alvo.length;i+=400){
+        const lote=alvo.slice(i,i+400),batch=writeBatch(db);
+        lote.forEach(x=>batch.update(doc(db,"pedidos",x.id),{modalidade:x.alvo,logisticaAjustadaEm:serverTimestamp(),editadoPor:perfil.uid,editadoPorNome:CAPS(perfil.nome),editadoEm:serverTimestamp()}));
+        await batch.commit();
+      }
+      jaCarregou=false;await lgComparar();
+      msg.className="msg ok";msg.textContent=`${alvo.length} pedido(s) atualizado(s). A cópia dos valores anteriores foi baixada.`;
+    }catch(e){
+      console.error(e);msg.className="msg err";
+      msg.textContent=(e&&e.code&&String(e.code).includes("permission"))?"Sem permissão. Verifique as regras do banco.":"Erro ao aplicar. Nada foi perdido: confira o arquivo de cópia e tente de novo.";
+      btn.disabled=false;
+    }finally{lgCarregando=false;}
+  }
+  $("lgMes").addEventListener("change",lgRender);$("lgGrupo").addEventListener("change",lgRender);
 
   // ===== Modal (revisão + edição) =====
   let idAtual=null, pAtual=null, travado=false;
