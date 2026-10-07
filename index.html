@@ -487,7 +487,7 @@
       <td class="data">${brData(p.dataFechamento||p.dataRegistro)}</td><td class="data">${brData(p.dataEvento)}</td>
       <td class="money">${money(p.valorLiquido)}</td><td>${p.modalidade==="entrega"?"Entrega":(p.modalidade==="retirada"?"Retirada":"—")}</td><td>${badge(p.conferencia||"pendente")}</td>
       <td><button class="btn-sm" data-ver="${p.id}">Abrir</button></td></tr>`).join("");
-    box.innerHTML=`<div class="tblwrap" style="overflow-x:auto"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Fechamento</th><th>Evento</th><th>Líquido</th><th>Entrega/Retirada</th><th>Situação</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+    box.innerHTML=`<div class="tblwrap" style="overflow-x:auto"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Fechamento</th><th>Evento</th><th>Líquido</th><th style="line-height:1.2">Entrega/<br>Retirada</th><th>Situação</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
     box.querySelectorAll("[data-ver]").forEach(b=>b.addEventListener("click",()=>{const p=todosPedidos.find(x=>x.id===b.dataset.ver);abrirModal(b.dataset.ver,p);}));
     $("paginacao").innerHTML = maxPag>1 ? `<button class="btn-sm" id="pgPrev" ${pagina===1?"disabled":""}>← Anterior</button><span style="font-size:13px;color:var(--muted)">Página ${pagina} de ${maxPag}</span><button class="btn-sm" id="pgNext" ${pagina===maxPag?"disabled":""}>Próxima →</button>` : "";
     if($("pgPrev"))$("pgPrev").addEventListener("click",()=>{pagina--;renderLista();window.scrollTo(0,0);});
