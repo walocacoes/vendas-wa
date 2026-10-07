@@ -178,7 +178,7 @@
 
       <!-- LISTA -->
       <section id="view-lista" style="display:none"><div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h2>Pedidos lançados</h2><p class="hint" style="margin-bottom:0">Busque, filtre e clique em um pedido para ver ou editar.</p></div><button class="btn-sm no-print" id="btnPdfLista">Salvar PDF</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h2>Pedidos lançados</h2><p class="hint" style="margin-bottom:0">Busque, filtre e clique em um pedido para ver ou editar.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-sm no-print" id="btnExcel">Exportar Excel</button><button class="btn-sm no-print" id="btnPdfLista">Salvar PDF</button></div></div>
         <div style="height:14px"></div>
         <div class="filtros">
           <div class="f busca"><label for="fBusca">Buscar (nº ou cliente)</label><input id="fBusca" placeholder="Digite para buscar…" autocomplete="off"></div>
@@ -520,6 +520,46 @@
     imprimindoTudo=true; renderLista(); window.print(); imprimindoTudo=false; renderLista();
   });
   ["fSituacao","fVendedor","fMes","fTipo"].forEach(id=>$(id).addEventListener("change",()=>{pagina=1;renderLista();}));
+
+  function carregarXLSX(){return new Promise((res,rej)=>{if(window.XLSX)return res();const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=()=>res();s.onerror=()=>rej(new Error("falha ao carregar"));document.head.appendChild(s);});}
+  const btnExcel=$("btnExcel");
+  if(btnExcel) btnExcel.addEventListener("click",async()=>{
+    const arr=filtrar().slice().sort((a,b)=>String(a.dataFechamento||a.dataRegistro||"").localeCompare(String(b.dataFechamento||b.dataRegistro||"")));
+    if(!arr.length){alert("Nenhum pedido para exportar com esses filtros.");return;}
+    const b=$("btnExcel");b.disabled=true;const t=b.textContent;b.textContent="Gerando…";
+    try{
+      await carregarXLSX();
+      const dados=arr.map(p=>({
+        "Nº Pedido":p.numeroPedido||"",
+        "Tipo":p.tipo==="aditivo"?"Aditivo":"Original",
+        "Cliente":p.cliente||"",
+        "CPF/CNPJ":p.documento?formatDoc(p.documento):"",
+        "Vendedor":CAPS(p.vendedorNome||p.vendedorId||""),
+        "Fechamento":brData(p.dataFechamento||p.dataRegistro),
+        "Evento":brData(p.dataEvento),
+        "Mês":p.mes||"",
+        "Modalidade":p.modalidade==="entrega"?"Entrega":(p.modalidade==="retirada"?"Retirada":""),
+        "Origem":p.origemMaterial||"",
+        "Canal":p.canal?canalLabel(p.canal):"",
+        "Cliente (novo/rec.)":p.tipoCliente||"",
+        "Valor Bruto":Number(p.valorBruto)||0,
+        "Desconto":Number(p.desconto)||0,
+        "Frete":Number(p.frete)||0,
+        "Valor Líquido":Number(p.valorLiquido)||0,
+        "Repasse Terceiro":Number(p.repasseTerceiro)||0,
+        "Margem WA":Number(p.margemWA)||0,
+        "Doação":p.doacao?"Sim":"Não",
+        "Valor Doado":Number(p.valorDoado)||0,
+        "Situação":p.conferencia||"pendente"
+      }));
+      const ws=XLSX.utils.json_to_sheet(dados);
+      ws["!cols"]=[{wch:14},{wch:9},{wch:28},{wch:18},{wch:12},{wch:12},{wch:12},{wch:11},{wch:11},{wch:10},{wch:14},{wch:14},{wch:12},{wch:11},{wch:10},{wch:13},{wch:14},{wch:12},{wch:8},{wch:12},{wch:11}];
+      const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Vendas");
+      let nome="vendas-wa";if($("fMes").value)nome+="-"+$("fMes").value;nome+="-"+new Date().toISOString().slice(0,10)+".xlsx";
+      XLSX.writeFile(wb,nome);
+    }catch(e){console.error(e);alert("Não foi possível gerar o Excel. Verifique a conexão e tente de novo.");}
+    finally{b.disabled=false;b.textContent=t;}
+  });
 
   async function atualizarContadorRevisao(){try{const s=await getDocs(query(PEDIDOS,where("conferencia","==","pendente")));const n=s.size,c=$("revCount");if(n>0){c.style.display="inline-block";c.textContent=n;}else c.style.display="none";}catch(e){}}
   let pendentesCache={};
