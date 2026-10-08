@@ -234,6 +234,8 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h2>Painéis</h2><p class="hint" style="margin-bottom:0">Contam apenas pedidos <b>confirmados</b>. Sobem conforme você aprova os pendentes.</p></div><button class="btn-sm no-print" id="btnPdf">Salvar PDF</button></div>
         <div class="filtros" style="margin-top:16px">
           <div class="f"><label for="dashMes">Mês</label><select id="dashMes"><option value="">Ano todo</option></select></div>
+          <div class="f"><label for="dashDe">De</label><input id="dashDe" type="date"></div>
+          <div class="f"><label for="dashAte">Até</label><input id="dashAte" type="date"></div>
           <div class="f"><label for="dashVend">Vendedor</label><select id="dashVend"><option value="">Todos</option></select></div>
         </div>
         <div style="height:14px"></div>
@@ -910,13 +912,15 @@
   const btnPdf=$("btnPdf");
   if(btnPdf) btnPdf.addEventListener("click",()=>{
     let extra="";
-    const fm=$("dashMes")?$("dashMes").value:"", fv=$("dashVend")?$("dashVend").value:"";
-    if(fm)extra+="  •  "+fm;
+    const fm=$("dashMes")?$("dashMes").value:"", fv=$("dashVend")?$("dashVend").value:"", fd=$("dashDe")?$("dashDe").value:"", fa=$("dashAte")?$("dashAte").value:"";
+    if(fd||fa)extra+="  •  "+(fd?brData(fd):"início")+" a "+(fa?brData(fa):"hoje");
+    else if(fm)extra+="  •  "+fm;
     if(fv){const nm=teamNome[fv]||fv;extra+="  •  "+nm;}
     $("phData").textContent="WA Locações & Eventos  •  "+new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})+extra;
     window.print();
   });
-  ["dashMes","dashVend"].forEach(id=>{const el=$(id);if(el)el.addEventListener("change",renderDashboard);});
+  ["dashMes","dashVend"].forEach(id=>{const el=$(id);if(el)el.addEventListener("change",()=>{if(id==="dashMes"&&el.value){$("dashDe").value="";$("dashAte").value="";}renderDashboard();});});
+  ["dashDe","dashAte"].forEach(id=>{const el=$(id);if(el)el.addEventListener("change",()=>{if(el.value)$("dashMes").value="";renderDashboard();});});
   async function renderDashboard(){
     const box=$("dashBox"); box.innerHTML='<div class="empty">Calculando…</div>';
     try{
@@ -926,8 +930,14 @@
       const selM=$("dashMes").value;$("dashMes").innerHTML='<option value="">Ano todo</option>'+mesesData.map(m=>`<option value="${m}">${m}</option>`).join("");$("dashMes").value=selM;
       const vendsData=[...new Map(all.map(p=>[p.vendedorId,CAPS(p.vendedorNome||p.vendedorId||"—")])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));
       const selV=$("dashVend").value;$("dashVend").innerHTML='<option value="">Todos</option>'+vendsData.map(([id,n])=>`<option value="${id}">${n}</option>`).join("");$("dashVend").value=selV;
-      const fMes=$("dashMes").value,fVend=$("dashVend").value;
-      if(fMes||fVend) all=all.filter(p=>(!fMes||p.mes===fMes)&&(!fVend||p.vendedorId===fVend));
+      const fMes=$("dashMes").value,fVend=$("dashVend").value,fDe=$("dashDe").value,fAte=$("dashAte").value;
+      const temRange=!!(fDe||fAte);
+      all=all.filter(p=>{
+        if(fVend && p.vendedorId!==fVend) return false;
+        if(temRange){const d=String(p.dataFechamento||p.dataRegistro||"").slice(0,10);if(!d)return false;if(fDe&&d<fDe)return false;if(fAte&&d>fAte)return false;return true;}
+        if(fMes && p.mes!==fMes) return false;
+        return true;
+      });
       const conf=all.filter(p=>(p.conferencia||"pendente")==="confirmado");
       const total=all.length;
       const nConf=conf.length;
@@ -970,7 +980,7 @@
         ${nDoacoes?card("Doações",money(totalDoado),nDoacoes+" pedido(s), fora das vendas"):""}</div>`;
 
       // realizado vs meta por mês (só o mês filtrado, se houver)
-      const mesesShow = fMes ? [fMes] : MESES;
+      const mesesShow = fMes ? [fMes] : (temRange ? MESES.filter(m=>(realMes[m]||0)>0) : MESES);
       const maxVal=Math.max(1,...mesesShow.map(m=>Math.max(Number(metas[m])||0, realMes[m]||0)));
       const mesesRows=mesesShow.map(m=>{
         const meta=Number(metas[m])||0, real=realMes[m]||0;
