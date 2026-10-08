@@ -262,6 +262,18 @@
             <div style="margin-top:8px;display:flex;align-items:center;gap:10px"><button class="primary" id="btnCopiar">Copiar mensagem</button><span class="msg" id="copiarMsg"></span></div>
           </div>
         </div>
+        <div class="no-print" style="margin-top:12px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 16px">
+          <button class="btn-sm" id="btnMetas" type="button">🎯 Metas do mês (R$)</button>
+          <div id="metasBox" style="display:none;margin-top:12px">
+            <div id="metasGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px"></div>
+            <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button class="primary" id="btnSalvarMetas">Salvar metas</button>
+              <button class="btn-sm" id="btnMetasPlanilha">Usar metas da planilha 2026</button>
+              <span class="msg" id="metasMsg"></span>
+              <span style="margin-left:auto;font-size:13px;color:var(--muted)">Total: <b id="metasTotal">R$ 0,00</b></span>
+            </div>
+          </div>
+        </div>
         <div style="height:14px"></div>
         <div id="dashBox"><div class="empty">Carregando…</div></div>
       </div></section>
@@ -1009,6 +1021,28 @@
   }
   if($("btnMsgDia")){$("msgData").value=hoje();$("btnMsgDia").addEventListener("click",gerarMsgDia);$("btnMsgPeriodo").addEventListener("click",gerarMsgPeriodo);
     $("btnCopiar").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("msgTexto").value);$("copiarMsg").className="msg ok";$("copiarMsg").textContent="Copiado! ✓";}catch(e){$("msgTexto").select();document.execCommand("copy");$("copiarMsg").className="msg ok";$("copiarMsg").textContent="Copiado! ✓";}});}
+
+  // ===== EDITOR DE METAS =====
+  const METAS_PLAN_2026={Janeiro:25000,Fevereiro:25000,"Março":32100,Abril:34900,Maio:67900,Junho:61100,Julho:59200,Agosto:31900,Setembro:40800,Outubro:49400,Novembro:69100,Dezembro:103600};
+  function atualizarTotalMetas(){let t=0;$("metasGrid").querySelectorAll(".metaInput").forEach(el=>t+=parseBR(el.value)||0);$("metasTotal").textContent=money(t);}
+  function renderMetasGrid(vals){
+    $("metasGrid").innerHTML=MESES.map(m=>`<div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11.5px;text-transform:uppercase;color:var(--muted);font-weight:600">${m}</label><input class="metaInput" data-mes="${m}" type="text" inputmode="decimal" value="${vals[m]!=null?fmtBR(vals[m]):""}" style="padding:8px 10px"></div>`).join("");
+    $("metasGrid").querySelectorAll(".metaInput").forEach(el=>{el.addEventListener("input",atualizarTotalMetas);el.addEventListener("blur",()=>{if(el.value.trim()!=="")el.value=fmtBR(parseBR(el.value));atualizarTotalMetas();});});
+    atualizarTotalMetas();
+  }
+  async function carregarMetasEditor(){let vals={};try{const md=await getDoc(doc(db,"metas","2026"));if(md.exists())vals=md.data();}catch(e){}renderMetasGrid(vals);}
+  if($("btnMetas")){
+    let metasCarregado=false;
+    $("btnMetas").addEventListener("click",async()=>{const box=$("metasBox");const abrir=box.style.display==="none";box.style.display=abrir?"block":"none";if(abrir&&!metasCarregado){await carregarMetasEditor();metasCarregado=true;}});
+    $("btnMetasPlanilha").addEventListener("click",()=>{renderMetasGrid(METAS_PLAN_2026);$("metasMsg").className="msg";$("metasMsg").textContent="Valores da planilha preenchidos. Confira e clique em Salvar.";});
+    $("btnSalvarMetas").addEventListener("click",async()=>{
+      const vals={};$("metasGrid").querySelectorAll(".metaInput").forEach(el=>{vals[el.dataset.mes]=parseBR(el.value)||0;});
+      const btn=$("btnSalvarMetas");btn.disabled=true;const t=btn.textContent;btn.textContent="Salvando…";
+      try{await setDoc(doc(db,"metas","2026"),vals);$("metasMsg").className="msg ok";$("metasMsg").textContent="Metas salvas! Reabra os Painéis para ver os números ajustados.";}
+      catch(e){console.error(e);$("metasMsg").className="msg err";$("metasMsg").textContent="Erro ao salvar (confira seu acesso de admin).";}
+      finally{btn.disabled=false;btn.textContent=t;}
+    });
+  }
 
   // ===== PAINÉIS =====
   const btnPdf=$("btnPdf");
