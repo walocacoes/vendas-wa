@@ -238,6 +238,30 @@
           <div class="f"><label for="dashAte">Até</label><input id="dashAte" type="date"></div>
           <div class="f"><label for="dashVend">Vendedor</label><select id="dashVend"><option value="">Todos</option></select></div>
         </div>
+        <div class="no-print" style="margin-top:14px;margin-bottom:6px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 16px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px">📲 Mensagem para o grupo</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <div style="display:flex;flex-direction:column;gap:5px"><label for="msgData" style="font-size:11.5px;text-transform:uppercase;color:var(--muted);font-weight:600">Dia</label><input id="msgData" type="date" style="padding:8px 10px"></div>
+            <button class="btn-sm" id="btnMsgDia">Gerar do dia</button>
+            <button class="btn-sm" id="btnMsgPeriodo">Gerar do período (De/Até acima)</button>
+          </div>
+          <div style="margin-top:12px;border-top:1px dashed var(--line);padding-top:10px">
+            <button class="btn-sm" id="btnFeriados" type="button">Feriados (para a meta diária)</button>
+            <div id="feriadosBox" style="display:none;margin-top:10px">
+              <p style="font-size:12.5px;color:var(--muted);margin:0 0 8px">Dias que não contam como úteis (além dos domingos). Afetam a meta diária.</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+                <div style="display:flex;flex-direction:column;gap:5px"><label for="ferData" style="font-size:11.5px;text-transform:uppercase;color:var(--muted);font-weight:600">Data</label><input id="ferData" type="date" style="padding:8px 10px"></div>
+                <button class="btn-sm" id="btnAddFer">Adicionar</button>
+                <button class="btn-sm" id="btnFerNac">Carregar nacionais 2026</button>
+              </div>
+              <div id="ferLista" style="font-size:13px"></div>
+            </div>
+          </div>
+          <div id="msgOut" style="display:none;margin-top:12px">
+            <textarea id="msgTexto" style="width:100%;min-height:210px;font:inherit;font-size:13px;line-height:1.5;padding:10px 12px;border:1px solid var(--line);border-radius:10px;resize:vertical"></textarea>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:10px"><button class="primary" id="btnCopiar">Copiar mensagem</button><span class="msg" id="copiarMsg"></span></div>
+          </div>
+        </div>
         <div style="height:14px"></div>
         <div id="dashBox"><div class="empty">Carregando…</div></div>
       </div></section>
@@ -907,6 +931,84 @@
       box.querySelectorAll("[data-dev]").forEach(b=>b.addEventListener("click",()=>abrirModal(b.dataset.dev,devolvidosCache[b.dataset.dev])));
     }catch(e){box.innerHTML='<div class="empty">Não foi possível carregar.</div>';console.error(e);}
   }
+
+  // ===== MENSAGEM PARA O GRUPO =====
+  let feriados=new Set();
+  async function carregarFeriados(){try{const s=await getDoc(doc(db,"config","feriados"));feriados=new Set((s.exists()&&s.data().dias)||[]);}catch(e){feriados=new Set();}}
+  function diasUteisInfo(iso){ // seg a sábado, menos feriados
+    const dt=new Date(iso+"T00:00:00");const ano=dt.getFullYear(),mesIdx=dt.getMonth(),day=dt.getDate();
+    const lastDay=new Date(ano,mesIdx+1,0).getDate();let total=0,pos=0,rest=0;
+    for(let d=1;d<=lastDay;d++){const wd=new Date(ano,mesIdx,d).getDay();const diaIso=`${ano}-${String(mesIdx+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;if(wd!==0&&!feriados.has(diaIso)){total++;if(d<=day)pos++;if(d>day)rest++;}}
+    return {total,pos,rest,mesIdx};
+  }
+  async function dadosMsg(){
+    let all=[];(await getDocs(PEDIDOS)).forEach(d=>all.push(d.data()));
+    const conf=all.filter(p=>(p.conferencia||"pendente")==="confirmado");
+    let metas={};try{const md=await getDoc(doc(db,"metas","2026"));if(md.exists())metas=md.data();}catch(e){}
+    await carregarFeriados();
+    return {conf,metas};
+  }
+  function renderFeriados(){
+    const arr=[...feriados].sort();
+    $("ferLista").innerHTML = arr.length ? arr.map(d=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:4px 10px;margin:0 6px 6px 0;font-size:12.5px">${brData(d)}<button data-fer="${d}" style="border:0;background:transparent;color:var(--danger);cursor:pointer;font-weight:700;font-size:15px;line-height:1">×</button></span>`).join("") : '<span style="color:var(--muted)">Nenhum feriado cadastrado.</span>';
+    $("ferLista").querySelectorAll("[data-fer]").forEach(b=>b.addEventListener("click",()=>removerFeriado(b.dataset.fer)));
+  }
+  async function salvarFeriados(){try{await setDoc(doc(db,"config","feriados"),{dias:[...feriados].sort()});}catch(e){console.error(e);alert("Não foi possível salvar os feriados. Verifique se publicou as regras novas do Firestore.");}}
+  async function removerFeriado(iso){feriados.delete(iso);await salvarFeriados();renderFeriados();}
+  const FERIADOS_NAC_2026=["2026-01-01","2026-02-16","2026-02-17","2026-04-03","2026-04-21","2026-05-01","2026-06-04","2026-09-07","2026-10-12","2026-11-02","2026-11-15","2026-11-20","2026-12-25"];
+  if($("btnFeriados")){
+    let ferCarregado=false;
+    $("btnFeriados").addEventListener("click",async()=>{const box=$("feriadosBox");const abrir=box.style.display==="none";box.style.display=abrir?"block":"none";if(abrir&&!ferCarregado){await carregarFeriados();renderFeriados();ferCarregado=true;}});
+    $("btnAddFer").addEventListener("click",async()=>{const d=$("ferData").value;if(!d)return;feriados.add(d);$("ferData").value="";await salvarFeriados();renderFeriados();});
+    $("btnFerNac").addEventListener("click",async()=>{FERIADOS_NAC_2026.forEach(d=>feriados.add(d));await salvarFeriados();renderFeriados();});
+  }
+  function mostrarMsg(txt){$("msgTexto").value=txt;$("msgOut").style.display="block";$("copiarMsg").textContent="";}
+  async function gerarMsgDia(){
+    const iso=$("msgData").value||hoje();
+    const btn=$("btnMsgDia");btn.disabled=true;btn.textContent="Gerando…";
+    try{
+      const {conf,metas}=await dadosMsg();
+      const dt=new Date(iso+"T00:00:00"),mesNome=MESES[dt.getMonth()];
+      const metaMes=Number(metas[mesNome])||0;
+      const realMes=conf.filter(p=>p.mes===mesNome && String(p.dataFechamento||p.dataRegistro||"").slice(0,10)<=iso).reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);
+      const pct=metaMes?realMes/metaMes*100:0, faltam=Math.max(0,metaMes-realMes);
+      const du=diasUteisInfo(iso);
+      const metaDiaria=du.total?metaMes/du.total:0;
+      const ritmo=du.rest>0?faltam/du.rest:faltam;
+      const vendasDia=conf.filter(p=>String(p.dataFechamento||p.dataRegistro||"").slice(0,10)===iso).sort((a,b)=>(Number(b.valorLiquido)||0)-(Number(a.valorLiquido)||0));
+      const totalDia=vendasDia.reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);
+      let gap=0;for(let m=0;m<dt.getMonth();m++){const meta=Number(metas[MESES[m]])||0;if(meta>0){const r=conf.filter(p=>p.mes===MESES[m]).reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);gap+=meta-r;}}
+      const listaVendas = vendasDia.length ? vendasDia.map(p=>`• ${p.cliente||"—"} — ${p.numeroPedido||"—"} — ${money(p.valorLiquido)} — ${CAPS(p.vendedorNome||p.vendedorId||"")}`).join("\n") : "Sem vendas confirmadas no dia.";
+      const linhaAcum = gap>0 ? `\n\n🔴 A recuperar de metas anteriores: ${money(gap)}` : (gap<0?`\n\n🟢 Acima da meta acumulada do ano em ${money(-gap)}`:"");
+      const txt=`📊 Atualização de Vendas — ${brData(iso)}\n📅 Dia útil ${du.pos} de ${du.total} (${mesNome})\n\n🎯 Meta do mês: ${money(metaMes)}\n📈 Realizado: ${money(realMes)} (${pct.toFixed(1).replace(".",",")}%)\n💰 Faltam: ${money(faltam)}\n⚡ Meta diária: ${money(metaDiaria)} | Ritmo p/ fechar: ${money(ritmo)}/dia (faltam ${du.rest} dias úteis)\n\n✅ Vendas do dia (${money(totalDia)}):\n${listaVendas}${linhaAcum}`;
+      mostrarMsg(txt);
+    }catch(e){console.error(e);$("copiarMsg").className="msg err";$("copiarMsg").textContent="Erro ao gerar.";}
+    finally{btn.disabled=false;btn.textContent="Gerar do dia";}
+  }
+  async function gerarMsgPeriodo(){
+    let de=$("dashDe").value,ate=$("dashAte").value;
+    if(!de&&!ate){const mes=$("dashMes").value;if(!mes){alert("Defina o período nos campos De/Até (ou escolha um mês) lá em cima.");return;}const mi=MESES.indexOf(mes);const ano=2026;de=`${ano}-${String(mi+1).padStart(2,"0")}-01`;ate=`${ano}-${String(mi+1).padStart(2,"0")}-${String(new Date(ano,mi+1,0).getDate()).padStart(2,"0")}`;}
+    if(!de)de="2026-01-01"; if(!ate)ate=hoje();
+    const btn=$("btnMsgPeriodo");btn.disabled=true;btn.textContent="Gerando…";
+    try{
+      const {conf,metas}=await dadosMsg();
+      const noPeriodo=conf.filter(p=>{const d=String(p.dataFechamento||p.dataRegistro||"").slice(0,10);return d&&d>=de&&d<=ate;});
+      const total=noPeriodo.reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);
+      const rv={};noPeriodo.forEach(p=>{const nome=CAPS(p.vendedorNome||p.vendedorId||"—");if(!rv[nome])rv[nome]={liq:0,n:0};rv[nome].liq+=Number(p.valorLiquido)||0;rv[nome].n++;});
+      const porVend=Object.entries(rv).sort((a,b)=>b[1].liq-a[1].liq).map(([n,v])=>`• ${n} — ${money(v.liq)} (${v.n} venda${v.n>1?"s":""})`).join("\n")||"Sem vendas no período.";
+      // contexto de meta se o período estiver todo no mesmo mês
+      const mDe=new Date(de+"T00:00:00").getMonth(),mAte=new Date(ate+"T00:00:00").getMonth();
+      let ctx="";
+      if(mDe===mAte){const mesNome=MESES[mDe];const metaMes=Number(metas[mesNome])||0;if(metaMes){const realMes=conf.filter(p=>p.mes===mesNome&&String(p.dataFechamento||p.dataRegistro||"").slice(0,10)<=ate).reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);const pct=realMes/metaMes*100,faltam=Math.max(0,metaMes-realMes);ctx=`\n\n🎯 Meta de ${mesNome}: ${money(metaMes)}\n📈 Realizado no mês até ${brData(ate)}: ${money(realMes)} (${pct.toFixed(1).replace(".",",")}%)\n💰 Faltam: ${money(faltam)}`;}}
+      let gap=0;const mesRefIdx=new Date(ate+"T00:00:00").getMonth();for(let m=0;m<mesRefIdx;m++){const meta=Number(metas[MESES[m]])||0;if(meta>0){const r=conf.filter(p=>p.mes===MESES[m]).reduce((s,p)=>s+(Number(p.valorLiquido)||0),0);gap+=meta-r;}}
+      const linhaAcum = gap>0 ? `\n\n🔴 A recuperar de metas anteriores: ${money(gap)}` : "";
+      const txt=`📊 Vendas — ${brData(de)} a ${brData(ate)}\n\n💵 Total no período: ${money(total)} (${noPeriodo.length} venda${noPeriodo.length>1?"s":""})\n\n👥 Por vendedor:\n${porVend}${ctx}${linhaAcum}`;
+      mostrarMsg(txt);
+    }catch(e){console.error(e);$("copiarMsg").className="msg err";$("copiarMsg").textContent="Erro ao gerar.";}
+    finally{btn.disabled=false;btn.textContent="Gerar do período (De/Até acima)";}
+  }
+  if($("btnMsgDia")){$("msgData").value=hoje();$("btnMsgDia").addEventListener("click",gerarMsgDia);$("btnMsgPeriodo").addEventListener("click",gerarMsgPeriodo);
+    $("btnCopiar").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("msgTexto").value);$("copiarMsg").className="msg ok";$("copiarMsg").textContent="Copiado! ✓";}catch(e){$("msgTexto").select();document.execCommand("copy");$("copiarMsg").className="msg ok";$("copiarMsg").textContent="Copiado! ✓";}});}
 
   // ===== PAINÉIS =====
   const btnPdf=$("btnPdf");
